@@ -1,0 +1,117 @@
+{
+ "data": [
+  {
+   "query": "stridewell reviews",
+   "frequency": 255,
+   "models": [
+    "ai_overview",
+    "chatgpt",
+    "gemini",
+    "perplexity"
+   ],
+   "prompts": [
+    {
+     "id": "prm_25q4idckf64zzond",
+     "text": "Is Stridewell good for marathon training?"
+    },
+    {
+     "id": "prm_ef7pvjkl0a00oj24",
+     "text": "What do runners say about Stridewell?"
+    },
+    {
+     "id": "prm_kgiut3s3rfmwlez8",
+     "text": "Stridewell Cloudline 4 review"
+    },
+    {
+     "id": "prm_mevdzayredk4j6bz",
+     "text": "Are Stridewell shoes true to size?"
+    }
+   ],
+   "promptCount": 4,
+   "firstSeen": "2026-08-28",
+   "lastSeen": "2026-09-25",
+   "intent": "review",
+   "wordCount": 2,
+   "coverage": null,
+   "coveringUrl": null,
+   "answers": 236,
+   "brandMentionedPct": 99.2,
+   "ownCitedPct": 61,
+   "topCitedDomains": [
+    {
+     "domain": "reddit.com",
+     "answers": 144
+    },
+    {
+     "domain": "stridewell.example",
+     "answers": 144
+    },
+    {
+     "domain": "en.wikipedia.org",
+     "answers": 103
+    }
+   ]
+  },
+  {
+   "query": "is stridewell a good brand",
+   "frequency": 232,
+   "models": [
+    "ai_overview",
+    "chatgpt",
+    "gemini",
+    "perplexity"
+   ],
+   "prompts": [
+    {
+     "id": "prm_25q4idckf64zzond",
+     "text": "Is Stridewell good for marathon training?"
+    },
+    {
+     "id": "prm_ef7pvjkl0a00oj24",
+     "text": "What do runners say about Stridewell?"
+    },
+    {
+     "id": "prm_kgiut3s3rfmwlez8",
+     "text": "Stridewell Cloudline 4 review"
+    },
+    {
+     "id": "prm_mevdzayredk4j6bz",
+     "text": "Are Stridewell shoes true to size?"
+    }
+   ],
+   "promptCount": 4,
+   "firstSeen": "2026-08-28",
+   "lastSeen": "2026-09-25",
+   "intent": "other",
+   "wordCount": 5,
+   "coverage": null,
+   "coveringUrl": null,
+   "answers": 232,
+   "brandMentionedPct": 97.8,
+   "ownCitedPct": 61.2,
+   "topCitedDomains": [
+    {
+     "domain": "stridewell.example",
+     "answers": 142
+    },
+    {
+     "domain": "reddit.com",
+     "answers": 137
+    },
+    {
+     "domain": "en.wikipedia.org",
+     "answers": 94
+    }
+   ]
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "limit": 200,
+   "total": 2,
+   "totalPages": 1
+  }
+ },
+ "error": null
+}

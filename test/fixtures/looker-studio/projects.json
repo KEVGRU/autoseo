@@ -1,0 +1,23 @@
+{
+ "data": [
+  {
+   "id": "prj_1u9dqopoqbk3mcmf",
+   "name": "Demo \u00b7 Stridewell",
+   "domain": "stridewell.example"
+  },
+  {
+   "id": "prj_demo0000000001",
+   "name": "Solakon",
+   "domain": "solakon.de"
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "limit": 5,
+   "total": 2,
+   "totalPages": 1
+  }
+ },
+ "error": null
+}

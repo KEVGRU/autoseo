@@ -1,0 +1,53 @@
+{
+ "data": [
+  {
+   "rank": 1,
+   "sourceId": "src_u6vzyl1aow25g89l",
+   "url": "https://www.runnersworld.com/gear/a20865766/best-running-shoes/",
+   "title": "The Best Running Shoes of 2026, Tested",
+   "domain": "runnersworld.com",
+   "contentType": "test",
+   "ownership": "third_party",
+   "citations": 682,
+   "citationsChange": -6,
+   "prompts": 40,
+   "answers": 682,
+   "models": [
+    "ai_overview",
+    "chatgpt",
+    "claude",
+    "gemini",
+    "perplexity"
+   ]
+  },
+  {
+   "rank": 2,
+   "sourceId": "src_6rd972zu0fnbn0bl",
+   "url": "https://www.reddit.com/r/RunningShoeGeeks/comments/1g7b2m4/megathread_shoe_comparisons/",
+   "title": "Shoe comparison megathread : r/RunningShoeGeeks",
+   "domain": "reddit.com",
+   "contentType": "ugc",
+   "ownership": "third_party",
+   "citations": 679,
+   "citationsChange": 1,
+   "prompts": 40,
+   "answers": 679,
+   "models": [
+    "ai_overview",
+    "chatgpt",
+    "claude",
+    "gemini",
+    "perplexity"
+   ]
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "limit": 200,
+   "total": 3,
+   "totalPages": 2
+  }
+ },
+ "error": null
+}

@@ -1,0 +1,111 @@
+{
+ "data": [
+  {
+   "date": "2026-09-20",
+   "answers": 200,
+   "visibility": 65.5,
+   "mentionRate": 63,
+   "citationRate": 30.5,
+   "avgPosition": 1.7,
+   "sentiment": 76.2,
+   "mentionedAndCited": 56,
+   "mentionedOnly": 70,
+   "citedOnly": 5,
+   "notVisible": 69
+  },
+  {
+   "date": "2026-09-21",
+   "answers": 200,
+   "visibility": 70.5,
+   "mentionRate": 69.5,
+   "citationRate": 38.5,
+   "avgPosition": 1.7,
+   "sentiment": 76.6,
+   "mentionedAndCited": 75,
+   "mentionedOnly": 64,
+   "citedOnly": 2,
+   "notVisible": 59
+  },
+  {
+   "date": "2026-09-22",
+   "answers": 200,
+   "visibility": 70.5,
+   "mentionRate": 67.5,
+   "citationRate": 36.5,
+   "avgPosition": 1.7,
+   "sentiment": 77.8,
+   "mentionedAndCited": 67,
+   "mentionedOnly": 68,
+   "citedOnly": 6,
+   "notVisible": 59
+  },
+  {
+   "date": "2026-09-23",
+   "answers": 200,
+   "visibility": 68,
+   "mentionRate": 64,
+   "citationRate": 35.5,
+   "avgPosition": 1.8,
+   "sentiment": 77,
+   "mentionedAndCited": 63,
+   "mentionedOnly": 65,
+   "citedOnly": 8,
+   "notVisible": 64
+  },
+  {
+   "date": "2026-09-24",
+   "answers": 200,
+   "visibility": 66.5,
+   "mentionRate": 62,
+   "citationRate": 37,
+   "avgPosition": 1.7,
+   "sentiment": 77.8,
+   "mentionedAndCited": 65,
+   "mentionedOnly": 59,
+   "citedOnly": 9,
+   "notVisible": 67
+  },
+  {
+   "date": "2026-09-25",
+   "answers": 200,
+   "visibility": 63.5,
+   "mentionRate": 62,
+   "citationRate": 31.5,
+   "avgPosition": 1.6,
+   "sentiment": 78.5,
+   "mentionedAndCited": 60,
+   "mentionedOnly": 64,
+   "citedOnly": 3,
+   "notVisible": 73
+  },
+  {
+   "date": "2026-09-26",
+   "answers": 0,
+   "visibility": null,
+   "mentionRate": null,
+   "citationRate": null,
+   "avgPosition": null,
+   "sentiment": null,
+   "mentionedAndCited": 0,
+   "mentionedOnly": 0,
+   "citedOnly": 0,
+   "notVisible": 0
+  }
+ ],
+ "meta": {
+  "period": {
+   "from": "2026-09-20",
+   "to": "2026-09-26",
+   "days": 7,
+   "previous": {
+    "from": "2026-09-13",
+    "to": "2026-09-19"
+   },
+   "models": "all",
+   "tagIds": [],
+   "markets": "all",
+   "brandScope": "tracked"
+  }
+ },
+ "error": null
+}

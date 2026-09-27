@@ -1,0 +1,33 @@
+{
+ "data": [
+  {
+   "rank": 3,
+   "sourceId": "src_bk34zr6yvpxz07g2",
+   "url": "https://runrepeat.com/ranking-rankings-of-running-shoes",
+   "title": "Running Shoe Rankings (Lab Tested)",
+   "domain": "runrepeat.com",
+   "contentType": "test",
+   "ownership": "third_party",
+   "citations": 653,
+   "citationsChange": -38,
+   "prompts": 40,
+   "answers": 653,
+   "models": [
+    "ai_overview",
+    "chatgpt",
+    "claude",
+    "gemini",
+    "perplexity"
+   ]
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 2,
+   "limit": 200,
+   "total": 3,
+   "totalPages": 2
+  }
+ },
+ "error": null
+}

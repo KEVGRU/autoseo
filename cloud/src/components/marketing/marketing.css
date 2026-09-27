@@ -1,0 +1,475 @@
+/*
+ * Marketing-site motion and decoration. CSS first: load animations and loops are pure CSS; `MotionObserver`
+ * (motion-observer.tsx) only marks elements as in view. Everything respects reduced motion, and every element is
+ * visible without JavaScript — hidden "before" states apply only while the observer runs (`:root[data-mk-motion]`).
+ */
+
+html {
+  scroll-padding-top: 5rem;
+}
+
+/* ─── Entrance reveals ──────────────────────────────────────────────────────────────────────────────────────────
+ * [data-animate]            fade + rise + un-blur when scrolled into view (variants: "fade", "scale", "left")
+ * style="--i: n"            stagger index (70 ms per step)
+ * Children of a revealed element can start one-shot animations with the `mk-when-in` helpers below.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  /* A keyframe animation (not a transition), so the element keeps its own hover transitions afterwards. Elements
+     already on screen at first load get data-inview="instant" and don't animate. */
+  :root[data-mk-motion] [data-animate]:not([data-inview]) {
+    opacity: 0;
+  }
+  :root[data-mk-motion] [data-animate][data-inview]:not([data-inview="instant"]) {
+    animation: mk-in 0.75s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  [data-animate] {
+    --mk-from: 0 1.5rem;
+    --mk-from-scale: 1;
+  }
+  [data-animate="fade"] {
+    --mk-from: 0 0;
+  }
+  [data-animate="scale"] {
+    --mk-from: 0 0;
+    --mk-from-scale: 0.96;
+  }
+  [data-animate="left"] {
+    --mk-from: -1.5rem 0;
+  }
+
+  /* One-shot children: bars grow, lines draw, items pop in once the parent [data-animate] is in view. */
+  :root[data-mk-motion] [data-animate]:not([data-inview]) .mk-grow-x {
+    scale: 0 1;
+  }
+  :root[data-mk-motion] [data-animate]:not([data-inview]) .mk-grow-y {
+    scale: 1 0;
+  }
+  :root[data-mk-motion] [data-animate]:not([data-inview]) .mk-draw {
+    stroke-dashoffset: var(--mk-len, 1);
+  }
+  :root[data-mk-motion] [data-animate]:not([data-inview]) .mk-pop {
+    opacity: 0;
+    scale: 0.9;
+    translate: 0 0.5rem;
+  }
+  .mk-grow-x,
+  .mk-grow-y,
+  .mk-pop {
+    transition:
+      scale 1s cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 0.6s ease,
+      translate 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition-delay: calc(0.25s + var(--d, 0) * 90ms);
+  }
+  .mk-draw {
+    transition: stroke-dashoffset 1.6s cubic-bezier(0.45, 0, 0.2, 1) 0.2s;
+  }
+
+  /* Loops inside [data-loop] pause while it is off screen. */
+  :root[data-mk-motion] [data-loop]:not([data-visible]),
+  :root[data-mk-motion] [data-loop]:not([data-visible]) * {
+    animation-play-state: paused !important;
+  }
+}
+.mk-grow-x {
+  transform-origin: left center;
+}
+.mk-grow-y {
+  transform-origin: center bottom;
+}
+/* SVG paths with pathLength="1"; --mk-len draws only part of a path (e.g. 0.92 of a score ring). */
+.mk-draw {
+  stroke-dasharray: var(--mk-len, 1) 2;
+  stroke-dashoffset: 0;
+}
+
+/* ─── Load animations (hero) ────────────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .mk-rise {
+    animation: mk-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(0.05s + var(--i, 0) * 80ms);
+  }
+  /* Headline words: rise and un-blur one after another. */
+  .mk-words > span {
+    display: inline-block;
+    animation: mk-word 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--w, 0) * 45ms);
+  }
+}
+@keyframes mk-in {
+  from {
+    opacity: 0;
+    translate: var(--mk-from);
+    scale: var(--mk-from-scale);
+    filter: blur(6px);
+  }
+}
+@keyframes mk-rise {
+  from {
+    opacity: 0;
+    translate: 0 1.25rem;
+    filter: blur(8px);
+  }
+}
+@keyframes mk-word {
+  from {
+    opacity: 0;
+    translate: 0 0.45em;
+    filter: blur(10px);
+  }
+}
+
+/* ─── Scroll-driven effects (only where supported) ──────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    /* Screenshots rise into place as they scroll into view. */
+    .mk-reveal {
+      animation: mk-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+    /* Hero stage tilts flat while it scrolls up. */
+    .mk-tilt {
+      transform-origin: 50% 0;
+      animation: mk-tilt linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 35%;
+    }
+    /* Header gains a shadow once the page scrolls. */
+    .mk-header {
+      animation: mk-header linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 140px;
+    }
+  }
+}
+@keyframes mk-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(2.5rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mk-tilt {
+  from {
+    transform: perspective(1600px) rotateX(16deg) scale(0.94);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes mk-header {
+  to {
+    box-shadow: 0 8px 32px -18px oklch(0 0 0 / 0.35);
+  }
+}
+
+/* ─── Loops ─────────────────────────────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .mk-ticker {
+    animation: mk-ticker 12s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+  .mk-float {
+    animation: mk-float 7s ease-in-out infinite;
+  }
+  .mk-float-slow {
+    animation: mk-float 10s ease-in-out infinite;
+  }
+
+  /* Infinite horizontal marquee: the track holds the items twice and moves by half its width. */
+  .mk-marquee-track {
+    animation: mk-marquee var(--mk-duration, 45s) linear infinite;
+  }
+  .mk-marquee[data-reverse] .mk-marquee-track {
+    animation-direction: reverse;
+  }
+  .mk-marquee:hover .mk-marquee-track,
+  .mk-marquee:focus-within .mk-marquee-track {
+    animation-play-state: paused;
+  }
+
+  /* Typewriter for one line of text: reveals, holds, clears (set --steps to the number of characters). */
+  .mk-type {
+    animation: mk-type var(--mk-type-duration, 7s) steps(var(--steps, 40), end) infinite;
+  }
+  .mk-caret {
+    animation: mk-caret 1s steps(1) infinite;
+  }
+
+  /* Vertical feed that scrolls forever (content rendered twice). */
+  .mk-feed {
+    animation: mk-feed var(--mk-duration, 18s) linear infinite;
+  }
+
+  /* Soft highlight that walks down a list: give items --i and the list --n (item count). */
+  .mk-cycle {
+    animation: mk-cycle calc(var(--n, 4) * 1.6s) ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 1.6s);
+  }
+
+  .mk-ping {
+    animation: mk-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+    animation-delay: calc(var(--i, 0) * 0.6s);
+  }
+  .mk-pulse {
+    animation: mk-pulse 2.6s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 0.35s);
+  }
+  .mk-blink {
+    animation: mk-blink 1.4s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 0.2s);
+  }
+  .mk-spin-slow {
+    animation: mk-spin 60s linear infinite;
+  }
+  .mk-eq {
+    animation: mk-eq var(--mk-eq, 3.2s) ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * -0.23s);
+  }
+  .mk-sheen {
+    background-size: 250% 100%;
+    animation: mk-sheen 3.2s linear infinite;
+  }
+  .mk-globe-dots {
+    animation: mk-globe 24s linear infinite;
+  }
+  /* List items build up one after another, stay, then clear in the same order (items get --i). */
+  .mk-appear {
+    animation: mk-appear var(--mk-cycle, 8s) cubic-bezier(0.2, 0.7, 0.2, 1) infinite backwards;
+    animation-delay: calc(0.3s + var(--i, 0) * 0.5s);
+  }
+}
+
+/* Five engine names (plus the first one repeated) at 1.25rem line height. */
+@keyframes mk-ticker {
+  0%, 17% { transform: translateY(0); }
+  20%, 37% { transform: translateY(-1.25rem); }
+  40%, 57% { transform: translateY(-2.5rem); }
+  60%, 77% { transform: translateY(-3.75rem); }
+  80%, 97% { transform: translateY(-5rem); }
+  100% { transform: translateY(-6.25rem); }
+}
+@keyframes mk-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -8px; }
+}
+@keyframes mk-marquee {
+  to { transform: translateX(-50%); }
+}
+@keyframes mk-type {
+  0% { clip-path: inset(0 100% 0 0); }
+  45%, 85% { clip-path: inset(0 0 0 0); }
+  95%, 100% { clip-path: inset(0 100% 0 0); }
+}
+@keyframes mk-caret {
+  50% { opacity: 0; }
+}
+@keyframes mk-feed {
+  to { transform: translateY(-50%); }
+}
+@keyframes mk-cycle {
+  0%, 100% { background-color: transparent; }
+  8%, 22% { background-color: color-mix(in oklch, var(--brand) 12%, transparent); }
+  32% { background-color: transparent; }
+}
+@keyframes mk-ping {
+  0% { transform: scale(1); opacity: 0.7; }
+  80%, 100% { transform: scale(2.6); opacity: 0; }
+}
+@keyframes mk-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+@keyframes mk-blink {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+@keyframes mk-spin {
+  to { rotate: 360deg; }
+}
+@keyframes mk-eq {
+  0%, 100% { scale: 1 0.35; }
+  50% { scale: 1 1; }
+}
+@keyframes mk-sheen {
+  from { background-position: 150% 0; }
+  to { background-position: -100% 0; }
+}
+@keyframes mk-globe {
+  to { transform: translateX(-50%); }
+}
+@keyframes mk-appear {
+  0% { opacity: 0; translate: 0 0.5rem; }
+  6%, 78% { opacity: 1; translate: 0 0; }
+  86%, 100% { opacity: 0; translate: 0 -0.25rem; }
+}
+
+/* Marquee layout (static, wrapped list when motion is reduced). */
+.mk-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+.mk-marquee-track {
+  display: flex;
+  width: max-content;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-marquee {
+    mask-image: none;
+  }
+  .mk-marquee-track {
+    width: auto;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .mk-marquee-track > [aria-hidden="true"] {
+    display: none;
+  }
+}
+
+/* ─── Decoration ────────────────────────────────────────────────────────────────────────────────────────────── */
+.mk-hero-glow {
+  background:
+    radial-gradient(60% 55% at 50% 0%, color-mix(in oklch, var(--brand) 16%, transparent), transparent 70%),
+    radial-gradient(40% 40% at 85% 20%, color-mix(in oklch, var(--chart-3) 8%, transparent), transparent 70%);
+}
+
+.mk-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, black 30%, transparent 75%);
+}
+
+.mk-screen-glow {
+  background: radial-gradient(50% 50% at 50% 50%, color-mix(in oklch, var(--brand) 22%, transparent), transparent 70%);
+  filter: blur(40px);
+}
+
+.mk-dark-panel {
+  background:
+    radial-gradient(60% 80% at 100% 0%, oklch(0.63 0.17 152 / 0.22), transparent 60%),
+    radial-gradient(50% 60% at 0% 100%, oklch(0.6 0.15 255 / 0.12), transparent 60%),
+    #141413;
+}
+
+/* Hero stage: deep green light from the bottom right, like a lit product shot. */
+.mk-stage {
+  background:
+    radial-gradient(70% 90% at 85% 100%, oklch(0.55 0.15 152 / 0.55), transparent 65%),
+    radial-gradient(45% 60% at 10% 0%, oklch(0.45 0.08 170 / 0.35), transparent 70%),
+    linear-gradient(160deg, #10110f, #0b0c0b 55%, #0f1a13);
+}
+
+.mk-dots-light {
+  background-image: radial-gradient(oklch(1 0 0 / 0.08) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.mk-dots {
+  background-image: radial-gradient(color-mix(in oklch, var(--foreground) 14%, transparent) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Dashed vertical guides along the content edges (large screens). */
+.mk-guides {
+  background-image:
+    linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 12%, transparent) 50%, transparent 50%),
+    linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 12%, transparent) 50%, transparent 50%);
+  background-size: 1px 8px, 1px 8px;
+  background-position: left top, right top;
+  background-repeat: repeat-y;
+}
+
+/* Dotted underline under section eyebrows. */
+.mk-eyebrow-rule {
+  background-image: radial-gradient(color-mix(in oklch, var(--foreground) 28%, transparent) 1px, transparent 1.2px);
+  background-size: 6px 2px;
+  background-repeat: repeat-x;
+  background-position: left bottom;
+}
+
+/* Native <details> FAQ: rotate the chevron and hide the default marker. */
+.mk-faq summary::-webkit-details-marker {
+  display: none;
+}
+.mk-faq summary {
+  list-style: none;
+}
+.mk-faq[open] .mk-faq-icon {
+  transform: rotate(45deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mk-faq::details-content {
+    transition: height 0.3s ease, content-visibility 0.3s allow-discrete;
+    height: 0;
+    overflow: clip;
+  }
+  .mk-faq[open]::details-content {
+    height: auto;
+  }
+}
+.mk-faq-root {
+  interpolate-size: allow-keywords;
+}
+
+/* Mobile menu panel (native popover): slides in from the right, dims the page behind it. */
+.mk-sheet::backdrop {
+  background: oklch(0 0 0 / 0.25);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mk-sheet {
+    transition: translate 0.22s ease, display 0.22s allow-discrete, overlay 0.22s allow-discrete;
+    translate: 100% 0;
+  }
+  .mk-sheet:popover-open {
+    translate: 0 0;
+  }
+  @starting-style {
+    .mk-sheet:popover-open {
+      translate: 100% 0;
+    }
+  }
+}
+
+/* Desktop mega menu panel (native popover below the header). */
+@media (prefers-reduced-motion: no-preference) {
+  .mk-menu {
+    transition: opacity 0.18s ease, translate 0.18s ease, display 0.18s allow-discrete, overlay 0.18s allow-discrete;
+    opacity: 0;
+    translate: 0 -0.5rem;
+  }
+  .mk-menu:popover-open {
+    opacity: 1;
+    translate: 0 0;
+  }
+  @starting-style {
+    .mk-menu:popover-open {
+      opacity: 0;
+      translate: 0 -0.5rem;
+    }
+  }
+}
+
+.mk-menu-trigger:has(+ .mk-menu:popover-open) {
+  color: var(--foreground);
+}
+.mk-menu-trigger:has(+ .mk-menu:popover-open) svg {
+  rotate: 180deg;
+}
+
+/* Floating call-to-action bar. */
+@media (prefers-reduced-motion: no-preference) {
+  .mk-dock {
+    transition: translate 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+  }
+}
+.mk-dock[data-hidden] {
+  translate: -50% calc(100% + 2rem);
+  opacity: 0;
+  pointer-events: none;
+}

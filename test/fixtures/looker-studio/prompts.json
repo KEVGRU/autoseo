@@ -1,0 +1,149 @@
+{
+ "data": [
+  {
+   "id": "prm_2beplxm4j0rm8hgb",
+   "text": "What gear do I need to start running?",
+   "country": "US",
+   "language": "en",
+   "status": "active",
+   "markets": [
+    "US"
+   ],
+   "funnelStage": "tofu",
+   "intent": "Information",
+   "persona": "New runner",
+   "tags": [
+    {
+     "id": "tag_t2ybtrsnkxodac9r",
+     "name": "Gear"
+    }
+   ],
+   "models": [
+    "chatgpt",
+    "perplexity",
+    "ai_overview",
+    "gemini",
+    "claude"
+   ],
+   "createdAt": "2026-09-12T02:39:00.000Z",
+   "lastRunAt": "2026-09-25T04:03:00.000Z",
+   "metrics": {
+    "isVisible": true,
+    "answers": 70,
+    "visibility": 31.4,
+    "visibilityChange": null,
+    "totalMentions": 31,
+    "mentionedAnswers": 20,
+    "mentionRate": 28.6,
+    "ownDomainCitations": 14,
+    "citationRate": 20,
+    "sentiment": 78,
+    "avgPosition": 1.8
+   },
+   "competitorsMentioned": [
+    {
+     "id": "cmp_wllbx8dtybi2talr",
+     "name": "Velocita",
+     "mentions": 33
+    },
+    {
+     "id": "cmp_4ujaclrvr9dtwnfb",
+     "name": "Aerion",
+     "mentions": 20
+    },
+    {
+     "id": "cmp_i50eswgna0k7s419",
+     "name": "Northpeak",
+     "mentions": 19
+    },
+    {
+     "id": "cmp_3tellojfrey3d3uu",
+     "name": "Kinetiq",
+     "mentions": 17
+    },
+    {
+     "id": "cmp_si0iqbvt61a5n0nl",
+     "name": "Solestar",
+     "mentions": 12
+    }
+   ]
+  },
+  {
+   "id": "prm_ef7pvjkl0a00oj24",
+   "text": "What do runners say about Stridewell?",
+   "country": "US",
+   "language": "en",
+   "status": "active",
+   "markets": [
+    "US"
+   ],
+   "funnelStage": "mofu",
+   "intent": "Evaluation",
+   "persona": "Everyday runner",
+   "tags": [
+    {
+     "id": "tag_f67nj52dp1j7xh9w",
+     "name": "Brand"
+    }
+   ],
+   "models": [
+    "chatgpt",
+    "perplexity",
+    "ai_overview",
+    "gemini",
+    "claude"
+   ],
+   "createdAt": "2026-09-06T02:33:00.000Z",
+   "lastRunAt": "2026-09-25T04:03:00.000Z",
+   "metrics": {
+    "isVisible": true,
+    "answers": 100,
+    "visibility": 99,
+    "visibilityChange": null,
+    "totalMentions": 370,
+    "mentionedAnswers": 99,
+    "mentionRate": 99,
+    "ownDomainCitations": 58,
+    "citationRate": 58,
+    "sentiment": 80,
+    "avgPosition": 1.2
+   },
+   "competitorsMentioned": [
+    {
+     "id": "cmp_wllbx8dtybi2talr",
+     "name": "Velocita",
+     "mentions": 65
+    },
+    {
+     "id": "cmp_3tellojfrey3d3uu",
+     "name": "Kinetiq",
+     "mentions": 42
+    },
+    {
+     "id": "cmp_4vr51a2903uqdlmm",
+     "name": "Pacefield",
+     "mentions": 18
+    },
+    {
+     "id": "cmp_4ujaclrvr9dtwnfb",
+     "name": "Aerion",
+     "mentions": 18
+    },
+    {
+     "id": "cmp_0os0d8vbe0hyz4q8",
+     "name": "Trailborn",
+     "mentions": 14
+    }
+   ]
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "limit": 200,
+   "total": 2,
+   "totalPages": 1
+  }
+ },
+ "error": null
+}

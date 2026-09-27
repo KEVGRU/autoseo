@@ -1,0 +1,24 @@
+{
+  "timeZone": "Etc/UTC",
+  "dependencies": {},
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/script.external_request"
+  ],
+  "dataStudio": {
+    "name": "AutoSEO",
+    "company": "AutoSEO (open source)",
+    "companyUrl": "https://github.com/codextde/autoseo",
+    "logoUrl": "https://raw.githubusercontent.com/codextde/autoseo/main/public/brand/icon.svg",
+    "addonUrl": "https://github.com/codextde/autoseo/tree/main/integrations/looker-studio",
+    "supportUrl": "https://github.com/codextde/autoseo/issues",
+    "description": "AI visibility (GEO) data from your AutoSEO instance: daily visibility, competitor ranking, cited sources, prompts and query fan-outs. Connect with your instance URL and an API key (read scope).",
+    "shortDescription": "AI visibility data from your AutoSEO instance.",
+    "authType": [
+      "PATH_KEY"
+    ],
+    "privacyPolicyUrl": "https://github.com/codextde/autoseo/blob/main/SECURITY.md",
+    "termsOfServiceUrl": "https://github.com/codextde/autoseo/blob/main/LICENSE"
+  }
+}

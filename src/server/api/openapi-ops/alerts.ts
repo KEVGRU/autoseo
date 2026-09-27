@@ -1,0 +1,153 @@
+import "server-only";
+import { S, type OpenApiOperation } from "../openapi-helpers";
+import { alertAckBody, alertEvaluateBody, alertEventsQuery, alertRuleInput, alertRulePatch } from "../alerts";
+import { ALERT_KINDS } from "@/server/db/schema/alerts";
+
+const { str, strN, num, int, bool, arr, obj } = S;
+const pagination = obj({ page: int, limit: int, total: int, totalPages: int });
+
+const alertItem = obj({ key: str, label: str, detail: strN, href: strN, value: num, previous: num });
+
+const alertEvent = obj({
+  id: str,
+  ruleId: strN,
+  ruleName: strN,
+  kind: { type: "string", enum: [...ALERT_KINDS] },
+  kindLabel: str,
+  severity: { type: "string", enum: ["info", "warning", "critical"] },
+  title: str,
+  body: str,
+  href: strN,
+  payload: obj({
+    items: arr(alertItem),
+    metric: strN,
+    current: num,
+    previous: num,
+    change: num,
+    unit: strN,
+    window: { type: ["object", "null"] },
+  }),
+  delivery: { type: "object", description: "inApp (recipients), emails {sent, failed}, slack (sent|failed), webhook (queued)" },
+  firedAt: str,
+  ackAt: strN,
+  ackBy: strN,
+});
+
+const alertRule = obj({
+  id: str,
+  name: str,
+  kind: { type: "string", enum: [...ALERT_KINDS] },
+  kindLabel: str,
+  summary: str,
+  params: obj({ threshold: num, windowDays: int, engines: arr(str), tags: arr(str), minSeverity: strN }),
+  channels: obj({ inApp: bool, emails: arr(str), slack: bool, slackHint: strN, webhook: bool }),
+  hasSlackWebhook: bool,
+  cooldownHours: int,
+  active: bool,
+  isDefault: bool,
+  lastFiredAt: strN,
+  lastEvaluatedAt: strN,
+  lastError: strN,
+  note: strN,
+  evaluations: int,
+  createdAt: str,
+  updatedAt: str,
+});
+
+/** REST v1 operations: alert events + alert rules. */
+export const alertsOperations: OpenApiOperation[] = [
+  {
+    method: "get",
+    path: "/projects/{projectId}/alerts",
+    operationId: "listAlerts",
+    summary: "List alerts",
+    description: "Fired alert events (visibility / SoV / position / sentiment drops, competitor overtakes, new competitors & ads, criticism spikes, lost citations, fact-check deviations, missing crawlers, bot errors, AI traffic drops, failed runs). `meta.counts` has open / critical totals.",
+    tag: "Alerts",
+    scope: "read",
+    query: alertEventsQuery,
+    data: arr(alertEvent),
+    meta: { counts: obj({ total: int, open: int, critical: int, last7d: int }), pagination },
+  },
+  {
+    method: "post",
+    path: "/projects/{projectId}/alerts/ack",
+    operationId: "acknowledgeAlerts",
+    summary: "Acknowledge alerts",
+    tag: "Alerts",
+    scope: "write",
+    permission: "alerts.manage",
+    body: alertAckBody,
+    data: obj({ acknowledged: int }),
+  },
+  {
+    method: "post",
+    path: "/projects/{projectId}/alerts/evaluate",
+    operationId: "evaluateAlerts",
+    summary: "Evaluate alert rules now",
+    description: "Runs the active rules immediately (they are evaluated hourly and after tracking runs). New findings fire events and are delivered like scheduled ones.",
+    tag: "Alerts",
+    scope: "write",
+    permission: "alerts.manage",
+    body: alertEvaluateBody,
+    data: obj({
+      evaluated: int,
+      fired: int,
+      results: arr(obj({ ruleId: str, kind: str, findings: int, deferredByCooldown: bool, note: strN, error: strN, event: { oneOf: [alertEvent, { type: "null" }] } })),
+    }),
+  },
+  {
+    method: "get",
+    path: "/projects/{projectId}/alert-rules",
+    operationId: "listAlertRules",
+    summary: "List alert rules",
+    description: "Alert rules of the project. A default set (visibility drop, sentiment drop, new competitor, failed run) is created on first access.",
+    tag: "Alerts",
+    scope: "read",
+    data: arr(alertRule),
+  },
+  {
+    method: "post",
+    path: "/projects/{projectId}/alert-rules",
+    operationId: "createAlertRule",
+    summary: "Create alert rule",
+    description: "Kinds and thresholds: visibility_drop / sov_drop (pp), position_drop (positions), sentiment_drop (points), competitor_overtake (lead in pp), new_competitor (min answers), criticism_spike (% increase), new_ad, citation_lost (min previous citations), fact_check_deviation (minSeverity), crawler_missing (min previous visits), bot_error_spike (error rate %), ai_traffic_drop (% drop), run_failed (% failed tasks for partial runs). The Slack webhook URL is stored encrypted and never returned.",
+    tag: "Alerts",
+    scope: "write",
+    permission: "alerts.manage",
+    body: alertRuleInput,
+    status: 201,
+    data: alertRule,
+  },
+  {
+    method: "get",
+    path: "/projects/{projectId}/alert-rules/{ruleId}",
+    operationId: "getAlertRule",
+    summary: "Get alert rule",
+    tag: "Alerts",
+    scope: "read",
+    data: alertRule,
+  },
+  {
+    method: "put",
+    path: "/projects/{projectId}/alert-rules/{ruleId}",
+    operationId: "updateAlertRule",
+    summary: "Update alert rule",
+    description: "Partial update. Changing params or kind resets the rule's dedupe state. `slackWebhookUrl`: URL sets, null/\"\" clears, omitted keeps.",
+    tag: "Alerts",
+    scope: "write",
+    permission: "alerts.manage",
+    body: alertRulePatch,
+    data: alertRule,
+  },
+  {
+    method: "delete",
+    path: "/projects/{projectId}/alert-rules/{ruleId}",
+    operationId: "deleteAlertRule",
+    summary: "Delete alert rule",
+    description: "Fired events are kept (without rule reference).",
+    tag: "Alerts",
+    scope: "write",
+    permission: "alerts.manage",
+    data: obj({ id: str, deleted: bool }),
+  },
+];

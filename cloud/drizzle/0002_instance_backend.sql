@@ -1,0 +1,1 @@
+ALTER TABLE "instances" ADD COLUMN "backend" text DEFAULT 'coolify' NOT NULL;

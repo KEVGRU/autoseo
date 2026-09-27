@@ -1,0 +1,102 @@
+import {
+  Activity,
+  BookOpen,
+  Bot,
+  Briefcase,
+  Building2,
+  CalendarDays,
+  ChartLine,
+  Check,
+  Code2,
+  Database,
+  Download,
+  FileText,
+  FlaskConical,
+  Gauge,
+  GitBranch,
+  Globe,
+  Handshake,
+  Heart,
+  KeyRound,
+  Layers,
+  Link2,
+  ListChecks,
+  Lock,
+  Mail,
+  Megaphone,
+  MessageSquare,
+  Network,
+  Presentation,
+  Rocket,
+  Scale,
+  Search,
+  Server,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Swords,
+  Target,
+  Users,
+  Video,
+  WandSparkles,
+  type LucideIcon,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { IconName } from "./types";
+
+const icons: Record<IconName, LucideIcon> = {
+  activity: Activity,
+  bot: Bot,
+  book: BookOpen,
+  briefcase: Briefcase,
+  building: Building2,
+  calendar: CalendarDays,
+  chart: ChartLine,
+  check: Check,
+  code: Code2,
+  database: Database,
+  download: Download,
+  file: FileText,
+  flask: FlaskConical,
+  gauge: Gauge,
+  git: GitBranch,
+  globe: Globe,
+  handshake: Handshake,
+  heart: Heart,
+  key: KeyRound,
+  layers: Layers,
+  link: Link2,
+  list: ListChecks,
+  lock: Lock,
+  mail: Mail,
+  megaphone: Megaphone,
+  message: MessageSquare,
+  network: Network,
+  presentation: Presentation,
+  rocket: Rocket,
+  scale: Scale,
+  search: Search,
+  server: Server,
+  shield: ShieldCheck,
+  sparkles: Sparkles,
+  star: Star,
+  swords: Swords,
+  target: Target,
+  users: Users,
+  video: Video,
+  wand: WandSparkles,
+};
+
+export function SiteIcon({ name, className }: { name: IconName; className?: string }) {
+  const Icon = icons[name] ?? Sparkles;
+  return (
+    <span
+      className={cn(
+        "grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-green-700 dark:text-green-300",
+        className,
+      )}
+    >
+      <Icon className="size-5" aria-hidden="true" />
+    </span>
+  );
+}
