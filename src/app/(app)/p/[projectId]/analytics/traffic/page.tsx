@@ -68,10 +68,11 @@ export default async function HumanTrafficPage({ params, searchParams }: PagePro
 
   /* ───────────── Settings ───────────── */
   if (tab === "settings") {
-    const [ga4State, matomoRow, piwikRow] = await Promise.all([
+    const [ga4State, matomoRow, piwikRow, posthogRow] = await Promise.all([
       getGoogleConnectionState(projectId, "ga4", { includeAccounts: canManage }),
       getIntegration(projectId, PROVIDERS.matomo),
       getIntegration(projectId, PROVIDERS.piwik),
+      getIntegration(projectId, PROVIDERS.posthog),
     ]);
     return (
       <PageContainer>
@@ -79,7 +80,7 @@ export default async function HumanTrafficPage({ params, searchParams }: PagePro
         <div className="space-y-1">
           <h2 className="text-[15px] font-semibold tracking-tight">Analytics Settings</h2>
           <p className="text-sm text-muted-foreground">
-            Manage your analytics connection. Connect Google Analytics 4, Matomo or Piwik PRO — AI-referred sessions from every source are
+            Manage your analytics connection. Connect Google Analytics 4, PostHog, Matomo or Piwik PRO — AI-referred sessions from every source are
             stored in the same normalized format and synced daily.
           </p>
         </div>
@@ -98,6 +99,7 @@ export default async function HumanTrafficPage({ params, searchParams }: PagePro
           </Suspense>
         )}
         <div className="grid gap-4 lg:grid-cols-2">
+          <TokenIntegrationCard projectId={projectId} provider={PROVIDERS.posthog} integration={posthogRow ? toPublicIntegration(posthogRow) : null} canManage={canManage} />
           <TokenIntegrationCard
             projectId={projectId}
             provider={PROVIDERS.matomo}
@@ -129,7 +131,7 @@ export default async function HumanTrafficPage({ params, searchParams }: PagePro
           description={
             pendingGa4
               ? "Your Google account is connected — pick the GA4 property of this website to import AI-referred sessions."
-              : "Connect Google Analytics 4, Matomo or Piwik PRO to see how many visitors ChatGPT, Perplexity, Gemini, Claude and Copilot send you — and whether they convert."
+              : "Connect Google Analytics 4, PostHog, Matomo or Piwik PRO to see how many visitors ChatGPT, Perplexity, Gemini, Claude and Copilot send you — and whether they convert."
           }
           href={`${base}?tab=settings`}
           actionLabel={pendingGa4 ? "Choose property" : "Connect analytics"}
@@ -196,6 +198,7 @@ export default async function HumanTrafficPage({ params, searchParams }: PagePro
           </AlertDescription>
         </Alert>
       )}
+      {source.measurementNote && <Alert><AlertDescription>{source.measurementNote}</AlertDescription></Alert>}
       {importing ? (
         <Panel>
           <div className="flex flex-col items-center gap-3 py-10 text-center">

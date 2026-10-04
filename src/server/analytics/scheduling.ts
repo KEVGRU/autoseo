@@ -32,7 +32,7 @@ export function uploadsDir(): string {
   return path.join(env.dataDir, "uploads", "logs");
 }
 
-const TRAFFIC_PROVIDERS: TrafficProvider[] = ["google_analytics", "matomo", "piwik_pro"];
+const TRAFFIC_PROVIDERS: TrafficProvider[] = ["google_analytics", "matomo", "piwik_pro", "posthog"];
 
 /** Enqueues the sync job for a project's integration (deduplicated while queued/running). */
 export async function enqueueAnalyticsSync(

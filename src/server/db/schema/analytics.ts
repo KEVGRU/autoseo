@@ -100,7 +100,7 @@ export const scQueryIntents = pgTable(
 
 /* ───────────────────────────── Human traffic (GA4 / Matomo / Piwik PRO) ───────────────────────────── */
 
-export type TrafficProvider = "google_analytics" | "matomo" | "piwik_pro";
+export type TrafficProvider = "google_analytics" | "matomo" | "piwik_pro" | "posthog";
 
 /**
  * Normalized AI-referred sessions per day × AI platform × landing page × country.
@@ -112,7 +112,7 @@ export const trafficRows = pgTable(
     projectId: text()
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    provider: text({ enum: ["google_analytics", "matomo", "piwik_pro"] }).notNull(),
+    provider: text({ enum: ["google_analytics", "matomo", "piwik_pro", "posthog"] }).notNull(),
     date: date({ mode: "string" }).notNull(),
     /** AI platform id (see server/analytics/ai-platforms). */
     platform: text().notNull(),
@@ -145,7 +145,7 @@ export const channelDaily = pgTable(
     projectId: text()
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    provider: text({ enum: ["google_analytics", "matomo", "piwik_pro"] }).notNull(),
+    provider: text({ enum: ["google_analytics", "matomo", "piwik_pro", "posthog"] }).notNull(),
     channel: text({ enum: ["organic_search"] }).notNull(),
     date: date({ mode: "string" }).notNull(),
     sessions: integer().notNull().default(0),
@@ -170,7 +170,7 @@ export const trafficDaily = pgTable(
     projectId: text()
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    provider: text({ enum: ["google_analytics", "matomo", "piwik_pro"] }).notNull(),
+    provider: text({ enum: ["google_analytics", "matomo", "piwik_pro", "posthog"] }).notNull(),
     date: date({ mode: "string" }).notNull(),
     sessions: integer().notNull().default(0),
     conversions: doublePrecision().notNull().default(0),
