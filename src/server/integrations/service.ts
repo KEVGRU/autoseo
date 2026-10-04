@@ -46,6 +46,9 @@ import {
 import { bingSiteMatchesDomain, testBingConnection } from "./bing";
 import { testMatomoConnection } from "./matomo";
 import { testPiwikConnection } from "./piwik";
+import { testPostHogConnection, ensurePostHogEndpoint } from "./posthog";
+import { posthogConfig } from "@/server/analytics/traffic/posthog";
+import { integrationTarget } from "./store";
 import { getSetting } from "@/server/settings";
 import { isTenantProject } from "@/server/cloud/tenancy";
 
@@ -288,8 +291,8 @@ export async function deleteSyncedData(projectId: string, provider: string, exec
     await exec.delete(scQueries).where(and(eq(scQueries.projectId, projectId), eq(scQueries.source, source)));
     await exec.delete(scPages).where(and(eq(scPages.projectId, projectId), eq(scPages.source, source)));
   }
-  if (provider === PROVIDERS.ga4 || provider === PROVIDERS.matomo || provider === PROVIDERS.piwik) {
-    const p = provider as "google_analytics" | "matomo" | "piwik_pro";
+  if (provider === PROVIDERS.ga4 || provider === PROVIDERS.matomo || provider === PROVIDERS.piwik || provider === PROVIDERS.posthog) {
+    const p = provider as "google_analytics" | "matomo" | "piwik_pro" | "posthog";
     await exec.delete(trafficRows).where(and(eq(trafficRows.projectId, projectId), eq(trafficRows.provider, p)));
     await exec.delete(trafficDaily).where(and(eq(trafficDaily.projectId, projectId), eq(trafficDaily.provider, p)));
     await exec.delete(channelDaily).where(and(eq(channelDaily.projectId, projectId), eq(channelDaily.provider, p)));
@@ -382,6 +385,8 @@ export async function testTokenCredentials(
         throw new Error(`The instance-wide Bing API key can only be used for sites on ${ctx.projectDomain}. Add your own API key for other sites.`);
       return testBingConnection(instanceKey, config.siteUrl ?? "", { revealSites: false });
     }
+    case PROVIDERS.posthog:
+      return testPostHogConnection({ ...posthogConfig(config), apiKey: secret.apiKey ?? "" });
     case PROVIDERS.matomo:
       return testMatomoConnection({ url: config.url ?? "", siteId: config.siteId ?? "", tokenAuth: secret.tokenAuth ?? "" });
     case PROVIDERS.piwik:
@@ -407,6 +412,11 @@ export async function saveTokenIntegration(input: {
   const entry = getCatalogEntry(input.provider);
   if (!entry || !isInlineTokenProvider(entry)) throw new Error("This integration cannot be configured here.");
   const { config, secret, existing } = await parseTokenValues(input.projectId, entry, input.values);
+  if (entry.key === PROVIDERS.posthog) {
+    Object.assign(config, posthogConfig(config));
+    // Saving without a connection test still prepares the stable reporting endpoint.
+    if (!input.test) await ensurePostHogEndpoint({ ...posthogConfig(config), apiKey: secret.apiKey ?? "" });
+  }
   let message: string | null = null;
   if (input.test && entry.testable) message = await testTokenCredentials(entry.key, config, secret, { projectId: input.projectId, projectDomain: input.projectDomain });
   // Even untested saves may not point the instance-wide Bing key at a foreign site.
@@ -416,7 +426,8 @@ export async function saveTokenIntegration(input: {
   const prev = existing?.config ?? {};
   const changedTarget =
     !!existing &&
-    ((entry.key === PROVIDERS.bing && prev.siteUrl !== config.siteUrl) ||
+    ((entry.key === PROVIDERS.posthog && integrationTarget(entry.key, prev) !== integrationTarget(entry.key, config)) ||
+      (entry.key === PROVIDERS.bing && prev.siteUrl !== config.siteUrl) ||
       (entry.key === PROVIDERS.matomo && (prev.url !== config.url || String(prev.siteId) !== config.siteId)) ||
       (entry.key === PROVIDERS.piwik && (prev.accountUrl !== config.accountUrl || prev.websiteId !== config.websiteId)));
   if (changedTarget) await cancelAnalyticsSync(input.projectId, entry.key);

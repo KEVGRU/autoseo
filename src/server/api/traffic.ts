@@ -52,7 +52,7 @@ export const aiTrafficInput = z.object({
   source: z
     .enum(TRAFFIC_PROVIDERS as [TrafficProvider, ...TrafficProvider[]])
     .optional()
-    .describe("Analytics source: google_analytics, matomo or piwik_pro (default: the first connected one)."),
+    .describe("Analytics source: google_analytics, matomo, piwik_pro or posthog (default: the first connected one)."),
   by: z
     .enum(["platform", "page", "country", "day"])
     .default("platform")

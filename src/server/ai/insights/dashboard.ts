@@ -206,7 +206,7 @@ async function getChecklist(ctx: ProjectContext): Promise<ChecklistItem[]> {
         and(
           eq(integrations.projectId, pid),
           eq(integrations.status, "connected"),
-          inArray(integrations.provider, ["google_search_console", "google_analytics", "bing_webmaster", "matomo", "piwik_pro"]),
+          inArray(integrations.provider, ["google_search_console", "google_analytics", "bing_webmaster", "matomo", "piwik_pro", "posthog"]),
         ),
       ),
     db.select({ n: count() }).from(workspaceMembers).where(eq(workspaceMembers.workspaceId, project.workspaceId)),

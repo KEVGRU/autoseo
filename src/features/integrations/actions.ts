@@ -29,6 +29,7 @@ const providerSchema = z.string().min(2).max(64).regex(/^[a-z0-9_]+$/);
 
 function revalidateProject(projectId: string) {
   revalidatePath(`/p/${projectId}/integrations`);
+  revalidatePath(`/p/${projectId}/settings`);
   revalidatePath(`/p/${projectId}/analytics`, "layout");
 }
 

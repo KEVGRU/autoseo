@@ -22,6 +22,8 @@ import {
   type PiwikColumn,
   type PiwikCredentials,
 } from "@/server/integrations/piwik";
+import { getPostHogCredentials, fetchPostHogTraffic, PostHogError, type PostHogCredentials } from "@/server/integrations/posthog";
+import { normalizePosthogRows } from "./posthog";
 import { IntegrationHttpError } from "@/server/integrations/http";
 import { aiReferrerDomains, classifyAiSource, GA4_AI_SOURCE_REGEX, PIWIK_AI_SOURCE_REGEX } from "../ai-platforms";
 import {
@@ -469,6 +471,24 @@ async function syncPiwik(projectId: string, target: string, creds: PiwikCredenti
   return { rows: rowsSaved, aiSessions, organic: organicState };
 }
 
+async function syncPostHog(projectId: string, target: string, creds: PostHogCredentials, range: SyncRange, ctx?: JobContext) {
+  let rows = 0;
+  let aiSessions = 0;
+  const windows = dateWindows(range.from, range.to, 7);
+  for (const [i, w] of windows.entries()) {
+    const checkCancelled = async () => { if (ctx && await ctx.isCancelled()) throw new SyncCancelledError(); };
+    await checkCancelled();
+    await ctx?.progress({ provider: "posthog", step: "fetch", window: i + 1, windows: windows.length, from: w.from, to: w.to });
+    const fetched = await fetchPostHogTraffic(creds, w.from, w.to, checkCancelled);
+    const normalized = normalizePosthogRows(fetched, w.from, w.to);
+    await checkCancelled();
+    await replaceRange(projectId, "posthog", target, w.from, w.to, normalized.rows, normalized.totals, normalized.organic);
+    rows += normalized.rows.length;
+    aiSessions += normalized.rows.reduce((sum, r) => sum + r.sessions, 0);
+  }
+  return { rows, aiSessions, organic: { status: "ok" as const, note: "Uses PostHog’s native Organic Search session channel." } };
+}
+
 /* ───────────────────────────── Entry point ───────────────────────────── */
 
 function friendlyError(err: unknown, provider: TrafficProvider): { message: string; retry: boolean } {
@@ -479,7 +499,7 @@ function friendlyError(err: unknown, provider: TrafficProvider): { message: stri
     const status = err instanceof IntegrationHttpError ? err.status : 0;
     return { message, retry: status === 0 || status === 429 || status >= 500 };
   }
-  if (err instanceof MatomoError || err instanceof PiwikError) return { message: err.message, retry: false };
+  if (err instanceof MatomoError || err instanceof PiwikError || err instanceof PostHogError) return { message: err.message, retry: false };
   if (err instanceof IntegrationHttpError) {
     return {
       message: err.status === 401 || err.status === 403 ? "The credentials were rejected — check them in Settings." : err.message,
@@ -489,7 +509,7 @@ function friendlyError(err: unknown, provider: TrafficProvider): { message: stri
   return { message: err instanceof Error ? err.message : String(err), retry: true };
 }
 
-/** Imports AI-referred sessions (and all-traffic totals) for a project from GA4, Matomo or Piwik PRO. */
+/** Imports AI-referred sessions (and all-traffic totals) for a project from GA4, PostHog, Matomo or Piwik PRO. */
 export async function syncTraffic(payload: TrafficSyncPayload, ctx?: JobContext): Promise<unknown> {
   const { projectId, provider } = payload;
   const row = await getIntegration(projectId, provider);
@@ -499,7 +519,7 @@ export async function syncTraffic(payload: TrafficSyncPayload, ctx?: JobContext)
   const started = Date.now();
   try {
     const cfg = row.config ?? {};
-    const today = provider === "google_analytics" ? todayInTimeZone(typeof cfg.timeZone === "string" ? cfg.timeZone : null) : new Date().toISOString().slice(0, 10);
+    const today = (provider === "google_analytics" || provider === "posthog") ? todayInTimeZone(typeof cfg.timeZone === "string" ? cfg.timeZone : null) : new Date().toISOString().slice(0, 10);
     // First sync since the organic benchmark shipped: re-import the whole window once so organic
     // search totals and AI page views cover the same history as the AI rows.
     const backfillOrganic = cfg.organicChannel === undefined && typeof cfg.syncedThrough === "string";
@@ -512,6 +532,10 @@ export async function syncTraffic(payload: TrafficSyncPayload, ctx?: JobContext)
       const creds = await getMatomoCredentials(projectId);
       if (!creds) throw new MatomoError("Matomo credentials are incomplete — edit them in Settings.");
       result = await syncMatomo(projectId, target, creds, range, ctx);
+    } else if (provider === "posthog") {
+      const creds = await getPostHogCredentials(projectId);
+      if (!creds) throw new PostHogError("PostHog credentials are incomplete — edit them in Settings.");
+      result = await syncPostHog(projectId, target, creds, range, ctx);
     } else {
       const creds = await getPiwikCredentials(projectId);
       if (!creds) throw new PiwikError("Piwik PRO credentials are incomplete — edit them in Settings.");

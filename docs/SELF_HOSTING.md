@@ -131,6 +131,8 @@ Everything past `DOMAIN` lives in the database and is configured at `/admin` aft
 | Area | What you'll want to set up first |
 |---|---|
 | **Email** | Admin → Email — Resend, Amazon SES (region preset) or custom SMTP, sender address, send a test email. Required for invites and magic links to actually arrive. |
+| **PostHog analytics** | Project Settings → Providers → PostHog. Enter the PostHog host, project ID and encrypted personal API key to import aggregated reports directly. See [setup and measurement limits](POSTHOG.md). |
+| **Email** | Project Settings → Providers or Admin → Email — SMTP or Amazon SES (region preset), sender address, send a test email. Required for invites and magic links to actually arrive. |
 | **AI providers** | Admin → AI Providers — either point AutoSEO at your own local **Claude Code / Codex CLI** agents (Settings → Local Agents → Install agent, see the README's *Local agents* section) or configure API keys (Anthropic / OpenAI / OpenRouter / Perplexity / Gemini / xAI / Mistral / DeepSeek / Meta / Qwen / Moonshot / Maritaca / Upstage) as a fallback. At least one of the two is needed for any AI-visibility feature. Without DataForSEO, keyword, SERP, domain, backlink and local data are filled with labelled AI estimates, and engines without a provider can be simulated by an AI model with web search (Admin → Data Providers / AI Providers). |
 | **DataForSEO** | Admin → Data Providers — keyword research, SERPs, backlinks and AI-engine tracking all go through [DataForSEO](https://dataforseo.com); add your credentials here. |
 | **Google OAuth** | Admin → Data Providers — connect Search Console, GA4 and Sheets export by registering an OAuth client and pasting the client ID/secret here. |
