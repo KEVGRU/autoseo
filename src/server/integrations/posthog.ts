@@ -1,70 +1,119 @@
 import "server-only";
-import dns from "node:dns/promises";
-import net from "node:net";
-import tls from "node:tls";
-import postgres, { type Sql } from "postgres";
+import { createHash } from "node:crypto";
 import { PROVIDERS } from "@/lib/integrations-catalog";
-import { isBlockedIp } from "@/server/ai/knowledge/safe-fetch";
-import { posthogConfig, posthogTrafficQuery, type PostHogConfig, type PostHogTrafficRow } from "@/server/analytics/traffic/posthog";
+import { addDays } from "@/server/analytics/period";
+import { todayInTimeZone } from "@/server/analytics/traffic/normalize";
+import { posthogConfig, POSTHOG_COLUMNS, posthogTrafficQuery, type PostHogConfig, type PostHogTrafficRow } from "@/server/analytics/traffic/posthog";
 import { getIntegration, readSecret } from "./store";
+import { httpJson, IntegrationHttpError } from "./http";
 
-export type PostHogCredentials = PostHogConfig & { password: string };
+export type PostHogCredentials = PostHogConfig & { apiKey: string };
 export class PostHogError extends Error {}
 
-/** Resolve once, reject internal destinations, and pin the connection while validating the original TLS identity. */
-export async function resolveExportHost(host: string): Promise<string> {
-  const addresses = net.isIP(host) ? [{ address: host }] : await dns.lookup(host, { all: true });
-  if (!addresses.length || addresses.some((a) => isBlockedIp(a.address)))
-    throw new PostHogError("The export database must resolve exclusively to public IP addresses.");
-  return addresses[0]!.address;
+type Endpoint = { name: string; is_active: boolean; current_version: number; query: { kind: string; query: string; variables?: Record<string, { code_name: string; variableId: string }> } };
+type Variable = { id: string; code_name: string; type: string };
+type Report = { name: string; endpoint_version: number; columns: string[]; results: unknown[][]; hasMore: boolean; error?: string; query_status?: { complete?: boolean; error?: string } };
+const ROW_LIMIT = 2000;
+
+export function posthogEndpointName(config: PostHogConfig): string {
+  return `autoseo_website_traffic_${createHash("sha256").update(posthogTrafficQuery(config)).digest("hex").slice(0, 16)}`;
 }
 
-async function withDatabase<T>(creds: PostHogCredentials, run: (sql: Sql) => Promise<T>): Promise<T> {
-  const address = await resolveExportHost(creds.host);
-  const sql = postgres({
-    host: address, port: Number(creds.port), database: creds.database, username: creds.user, password: creds.password,
-    ssl: { rejectUnauthorized: true, ...(net.isIP(creds.host) ? {} : { servername: creds.host }),
-      checkServerIdentity: (_hostname: string, certificate: tls.PeerCertificate) => tls.checkServerIdentity(creds.host, certificate),
-      ...(creds.caCertificate ? { ca: Buffer.from(creds.caCertificate, "base64").toString("utf8") } : {}) },
-    max: 1, connect_timeout: 10, idle_timeout: 5, prepare: false, fetch_types: false,
-    connection: { application_name: "AutoSEO PostHog exports", statement_timeout: 120_000, default_transaction_read_only: true, timezone: "UTC" },
-  });
-  try { return await run(sql); }
-  catch (error) {
-    const code = (error as { code?: string }).code;
-    if (code === "28P01" || code === "42501") throw new PostHogError("Export database credentials or table permissions were rejected.");
-    if (code === "42P01" || code === "42703") throw new PostHogError("The PostHog events export table is missing or has an incompatible schema.");
+async function posthogCall<T>(creds: PostHogCredentials, path: string, body?: unknown): Promise<T> {
+  try {
+    return await httpJson<T>(`${creds.host}/api/projects/${creds.projectId}/${path}`, {
+      untrusted: true, timeoutMs: 120_000, maxBytes: 5 * 1024 * 1024,
+      headers: { Authorization: `Bearer ${creds.apiKey}` }, ...(body === undefined ? {} : { method: "POST", body }),
+    });
+  } catch (error) {
+    if (error instanceof IntegrationHttpError && [401, 403].includes(error.status))
+      throw new PostHogError("PostHog rejected the API key or its permissions. Use a personal API key with Endpoint read access; automatic setup also needs Endpoint and SQL variable write access.");
     throw error;
-  } finally { await sql.end({ timeout: 5 }); }
+  }
 }
 
-/** Validate standard Events export columns before accepting a connection. No website data is returned. */
+function validateEndpoint(endpoint: Endpoint, creds: PostHogConfig): Endpoint {
+  const codes = Object.values(endpoint?.query?.variables ?? {}).map((v) => v.code_name).sort();
+  if (!endpoint?.is_active || endpoint.current_version !== 1 || endpoint.name !== posthogEndpointName(creds) ||
+      endpoint.query?.kind !== "HogQLQuery" || endpoint.query.query !== posthogTrafficQuery(creds) ||
+      JSON.stringify(codes) !== JSON.stringify(["autoseo_date_from", "autoseo_date_to"]))
+    throw new PostHogError("The AutoSEO reporting endpoint was changed or disabled. Restore its original query and version, or reconnect with a different reporting configuration.");
+  return endpoint;
+}
+
+/** Setup is idempotent. Existing reports need only read access; new configurations create a saved aggregate report. */
+export async function ensurePostHogEndpoint(creds: PostHogCredentials): Promise<Endpoint> {
+  const name = posthogEndpointName(creds);
+  try { return validateEndpoint(await posthogCall<Endpoint>(creds, `endpoints/${name}/?version=1`), creds); }
+  catch (error) { if (!(error instanceof IntegrationHttpError && error.status === 404)) throw error; }
+  const variables: Variable[] = [];
+  // SQL-variable metadata only. Do not follow upstream URLs with credentials.
+  for (let offset = 0; offset < 10_000; offset += 100) {
+    const page = await posthogCall<{ results: Variable[]; next: string | null }>(creds, `insight_variables/?limit=100&offset=${offset}`);
+    if (!Array.isArray(page.results)) throw new PostHogError("PostHog returned unexpected SQL variable metadata.");
+    variables.push(...page.results);
+    if (!page.next) break;
+    if (offset === 9900) throw new PostHogError("Too many SQL variables to configure the reporting endpoint.");
+  }
+  const today = todayInTimeZone(creds.timeZone);
+  const definitions: Record<string, { variableId: string; code_name: string; value: string }> = {};
+  for (const [code, label, value] of [["autoseo_date_from", "AutoSEO date from", addDays(today, -1)], ["autoseo_date_to", "AutoSEO date to", today]]) {
+    const variable = variables.find((v) => v.code_name === code) ??
+      await posthogCall<Variable>(creds, "insight_variables/", { name: label, type: "String", default_value: value });
+    if (variable.code_name !== code || variable.type !== "String" || !/^[0-9a-f-]{36}$/i.test(variable.id))
+      throw new PostHogError("AutoSEO date variables must be String variables with their original names.");
+    definitions[variable.id] = { variableId: variable.id, code_name: code!, value: value! };
+  }
+  try {
+    return validateEndpoint(await posthogCall<Endpoint>(creds, "endpoints/", {
+      name, description: "Aggregated website traffic for AutoSEO. No individual events or identities are returned.",
+      query: { kind: "HogQLQuery", query: posthogTrafficQuery(creds), variables: definitions },
+      data_freshness_seconds: 86400, is_materialized: false,
+    }), creds);
+  } catch (error) {
+    // A concurrent connection test may have created the same report.
+    if (error instanceof IntegrationHttpError && [400, 409].includes(error.status))
+      return validateEndpoint(await posthogCall<Endpoint>(creds, `endpoints/${name}/?version=1`), creds);
+    throw error;
+  }
+}
+
 export async function testPostHogConnection(creds: PostHogCredentials): Promise<string> {
-  return withDatabase(creds, async (sql) => {
-    await sql`SELECT uuid, event, properties, distinct_id, team_id, timestamp FROM ${sql(creds.schema)}.${sql(creds.table)} LIMIT 0`;
-    const columns = await sql`SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = ${creds.schema} AND table_name = ${creds.table}`;
-    const types = new Map(columns.map((c) => [c.column_name, c.data_type]));
-    if (types.get("properties") !== "jsonb" || !["timestamp with time zone", "timestamp without time zone"].includes(types.get("timestamp")))
-      throw new PostHogError("Use a standard PostHog Events export with JSONB properties and a timestamp column (UTC for timestamps without a time zone).");
-    return `Connected to ${creds.schema}.${creds.table}. Ensure scheduled exports and historical backfill have completed before syncing.`;
-  });
+  await ensurePostHogEndpoint(creds);
+  const yesterday = addDays(todayInTimeZone(creds.timeZone), -1);
+  await fetchPostHogTraffic(creds, yesterday, yesterday);
+  return `Connected to PostHog project ${creds.projectId}. Website reporting is ready.`;
 }
 
 export async function getPostHogCredentials(projectId: string): Promise<PostHogCredentials | null> {
   const row = await getIntegration(projectId, PROVIDERS.posthog);
-  const secret = row && readSecret<{ password?: string }>(row);
-  if (!row || !secret?.password) return null;
-  return { ...posthogConfig(row.config), password: secret.password };
+  const secret = row && readSecret<{ apiKey?: string }>(row);
+  if (!row || !secret?.apiKey) return null;
+  return { ...posthogConfig(row.config), apiKey: secret.apiKey };
 }
 
-export async function queryPostHogTraffic(sql: Sql, creds: PostHogConfig, from: string, to: string): Promise<PostHogTrafficRow[]> {
-  const { query, parameters } = posthogTrafficQuery(creds, from, to);
-  const rows = await sql.unsafe(query, parameters as postgres.ParameterOrJSON<never>[]);
-  if (rows.length > 50_000) throw new PostHogError("Too many aggregated rows in one import window. Restrict the website hostname.");
-  return rows as unknown as PostHogTrafficRow[];
-}
-
-export async function fetchPostHogTraffic(creds: PostHogCredentials, from: string, to: string, checkCancelled?: () => Promise<void>) {
+/** Import aggregate reports only. Split busy windows by date, and reject truncated single-day reports. */
+export async function fetchPostHogTraffic(creds: PostHogCredentials, from: string, to: string, checkCancelled?: () => Promise<void>): Promise<PostHogTrafficRow[]> {
+  if (![from, to].every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(Date.parse(d)) && new Date(d).toISOString().slice(0, 10) === d) || from > to ||
+      (Date.parse(to) - Date.parse(from)) / 86400000 > 6) throw new PostHogError("PostHog report windows must contain one to seven valid days.");
   await checkCancelled?.();
-  return withDatabase(creds, (sql) => queryPostHogTraffic(sql, creds, from, to));
+  const result = await posthogCall<Report>(creds, `endpoints/${posthogEndpointName(creds)}/run?version=1`, {
+    variables: { autoseo_date_from: from, autoseo_date_to: addDays(to, 1) }, limit: ROW_LIMIT + 1, refresh: "cache",
+  });
+  if (!result || result.error || result.query_status?.complete === false || result.query_status?.error ||
+      result.name !== posthogEndpointName(creds) || result.endpoint_version !== 1 || typeof result.hasMore !== "boolean" ||
+      !Array.isArray(result.columns) || !result.columns.every((c) => typeof c === "string") ||
+      !Array.isArray(result.results) || !result.results.every((r) => Array.isArray(r) && r.length === result.columns.length))
+    throw new PostHogError("PostHog returned an incomplete or unexpected report. No data was replaced.");
+  const indices = POSTHOG_COLUMNS.map((c) => result.columns.indexOf(c));
+  if (indices.some((i) => i < 0) || new Set(result.columns).size !== result.columns.length)
+    throw new PostHogError("PostHog returned unexpected traffic columns.");
+  if (result.hasMore || result.results.length > ROW_LIMIT) {
+    if (from === to) throw new PostHogError("This website exceeds 2,000 reporting groups in one day. Restrict the website hostname before syncing.");
+    const middle = addDays(from, Math.floor((Date.parse(to) - Date.parse(from)) / 86400000 / 2));
+    const first = await fetchPostHogTraffic(creds, from, middle, checkCancelled);
+    const second = await fetchPostHogTraffic(creds, addDays(middle, 1), to, checkCancelled);
+    return [...first, ...second];
+  }
+  return result.results.map((r) => Object.fromEntries(POSTHOG_COLUMNS.map((c, i) => [c, r[indices[i]!]])) as PostHogTrafficRow);
 }

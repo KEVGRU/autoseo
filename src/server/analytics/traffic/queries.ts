@@ -53,11 +53,11 @@ export async function getTrafficSources(projectId: string): Promise<TrafficSourc
         ? String(cfg.propertyName ?? cfg.propertyId ?? "")
         : provider === "matomo"
           ? `${hostOf(cfg.url)} · site ${String(cfg.siteId ?? "")}`
-          : provider === "posthog" ? `project ${String(cfg.projectId ?? "")} · ${String(cfg.host ?? "")} · ${String(cfg.schema ?? "posthog_exports")}.${String(cfg.table ?? "events")}` : hostOf(cfg.accountUrl);
+          : provider === "posthog" ? `project ${String(cfg.projectId ?? "")} · ${String(cfg.host ?? "")} · ${String(cfg.hostname ?? "all hostnames")}` : hostOf(cfg.accountUrl);
     const pending = row.status === "pending" || (provider === "google_analytics" && !cfg.propertyId);
     out.push({
       provider,
-      measurementNote: provider === "posthog" ? `Sessions are reconstructed from exported pageviews with session IDs; duration measures recorded event activity. Organic search is inferred from entry attribution.${!cfg.conversionEvents ? " Conversion events are not mapped; conversion metrics are unavailable and shown as zero." : ""}${!cfg.revenueEvent ? " Revenue is not mapped; revenue is unavailable and shown as zero." : ""}` : null,
+      measurementNote: provider === "posthog" ? `Uses PostHog’s native session duration, bounce and acquisition channel. Visitors are unique within each reporting group and may overlap across groups.${!cfg.conversionEvents ? " Conversion events are not mapped; conversion metrics are unavailable and shown as zero." : ""}${!cfg.revenueEvent ? " Revenue is not mapped; revenue is unavailable and shown as zero." : ""}` : null,
       label: TRAFFIC_PROVIDER_LABEL[provider],
       propertyLabel,
       status: pending ? "pending" : row.status === "error" ? "error" : "connected",

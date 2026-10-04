@@ -1,61 +1,32 @@
-# PostHog website analytics via Postgres exports
+# PostHog website analytics
 
-AutoSEO imports website analytics from a standard PostHog **Events** batch export. It reads the export database using a separate read-only account, then writes only aggregated traffic metrics to its own database. It does not use PostHog's Query API for scheduled extraction.
+Connect PostHog directly from **Project Settings → Providers**, **Integrations**, or **Analytics → Human Traffic → Settings**. AutoSEO fetches aggregated reports over HTTPS and stores normalized traffic in its existing application database.
 
-## Prepare the destination
+## Setup
 
-Use a dedicated Postgres database, separate from AutoSEO's application database. Enable TLS, publish its endpoint only as necessary for PostHog and AutoSEO, and restrict incoming connections to the relevant PostHog export addresses and your application server. Use a publicly trusted certificate, or supply the CA certificate to AutoSEO. AutoSEO always verifies the certificate and original hostname/IP; private and loopback connection destinations are rejected.
+Enter your PostHog host (`https://eu.posthog.com`, `https://us.posthog.com`, or your self-hosted HTTPS origin), numeric project ID, and personal API key. The public project capture token cannot read analytics. The key is encrypted and never returned to the browser or included in a URL.
 
-Create a writer account for PostHog and a reader account for AutoSEO. For example, run these commands as a database administrator with `psql`. Supply strong, distinct passwords using psql variables; do not commit credentials:
+AutoSEO uses a saved **Endpoint** report rather than copying individual events. The first connection test or save creates two reusable String SQL variables (`autoseo_date_from`, `autoseo_date_to`) and an `autoseo_website_traffic_*` endpoint. Its name is derived from the report definition, so identical configurations reuse it. Changing the hostname, timezone or event mappings creates a separate report and triggers a full resync. Only date bounds are passed at runtime, and the client pins endpoint version 1.
 
-```sql
--- Run while connected to the dedicated export database.
-CREATE ROLE posthog_exporter LOGIN PASSWORD :'writer_password';
-CREATE ROLE autoseo_reader LOGIN PASSWORD :'reader_password';
-CREATE SCHEMA posthog_exports AUTHORIZATION posthog_exporter;
-GRANT USAGE ON SCHEMA posthog_exports TO autoseo_reader;
-ALTER DEFAULT PRIVILEGES FOR ROLE posthog_exporter IN SCHEMA posthog_exports
-  GRANT SELECT ON TABLES TO autoseo_reader;
-ALTER ROLE autoseo_reader SET default_transaction_read_only = on;
-```
+Use a personal API key with **Endpoint read** access. Initial automatic setup also needs **Endpoint write** and **SQL variable read/write** access (the SQL-variable API uses PostHog's insight-variable permissions). Alternatively, an administrator can create the report first and provide a key with only Endpoint read access. Restrict the key to the intended PostHog project. Changing the host or project requires entering the key again.
 
-After the export creates its table, grant access to existing tables as well and add a timestamp index:
+Run **Test connection**, then save. The test executes yesterday's report; an empty report is a valid connection. AutoSEO schedules an initial historical sync, followed by daily updates through yesterday with overlap for late data. No export destination, extra Postgres service, or raw-event backfill is required.
 
-```sql
-GRANT SELECT ON ALL TABLES IN SCHEMA posthog_exports TO autoseo_reader;
-CREATE INDEX IF NOT EXISTS posthog_events_timestamp_idx
-  ON posthog_exports.events (timestamp);
-```
+## Reporting configuration
 
-The export writer needs only access to this dedicated schema. The application reader needs SELECT, not INSERT, UPDATE, DELETE, or CREATE. Review database-level PUBLIC privileges to ensure neither account can access unrelated databases or create objects outside the export schema.
+If the PostHog project tracks multiple hosts, set the exact website hostname to avoid mixing website and platform traffic. Select the reporting time zone (IANA name, e.g. `Europe/Vienna`) and revenue currency (defaults: UTC and EUR).
 
-## Configure PostHog
+Optional conversion event names are comma-separated exact matches. For revenue, set both an event name and a numeric top-level event property. Revenue must already be in currency units, not cents; AutoSEO does not convert currencies. Unmapped conversion and revenue metrics are unavailable and displayed as zero with a notice.
 
-In the intended PostHog project, add a scheduled **Postgres** destination using the writer credentials, database name, `posthog_exports` schema, and `events` table. Export the Events model with all browser pageviews, activity, and the custom conversion/revenue events you intend to measure. Enable TLS and test the destination.
+## Measurements and limits
 
-Complete the historical backfill **before** the first AutoSEO sync. Keep exports running at least daily (hourly is preferable). AutoSEO imports through yesterday in the configured reporting time zone, with a three-day overlap for late data. If you later backfill older history or an outage exceeds that overlap, trigger a full sync in AutoSEO.
+- Uses PostHog's native session start, landing page, pageview count, duration and bounce flag; sessions without pageviews are excluded.
+- AI sources use AutoSEO's shared referrer/UTM classifier. The organic benchmark uses PostHog's native `Organic Search` channel.
+- Country comes from the session's first pageview. Visitors use PostHog's resolved person identity, unique within each reporting group; a visitor can appear in several groups.
+- Conversion and revenue events are attributed to their session's landing page and start date. Events are scanned through one day after a reporting window for sessions crossing midnight. Events arriving later require another sync.
+- Reports contain only date × landing page × country × source × channel aggregates. They do not return individual events, session IDs or person IDs.
+- Each request covers at most seven days and 2,000 reporting groups. Busy windows are split by date. A single day exceeding this cap fails with a clear message instead of silently importing partial data.
+- Saved reports are cached for up to one day. A changed or disabled report, missing columns, unexpected version, malformed response, or incomplete report causes sync to fail before replacing that window's data.
+- Endpoint support must be available in the connected PostHog installation. PostHog's [Endpoints documentation](https://posthog.com/docs/endpoints) describes availability and operation.
 
-Use the standard JSONB `properties` and a timestamp field. AutoSEO accepts timestamps with a time zone, or timestamps without a time zone interpreted as UTC, and validates those types and requires `uuid`, `event`, `team_id`, and `distinct_id`. Additional export columns are ignored.
-
-See [PostHog's Postgres destination guide](https://posthog.com/docs/cdp/batch-exports/postgres) and [batch export guide](https://posthog.com/docs/cdp/batch-exports).
-
-## Connect AutoSEO
-
-Open the project's Integrations page or Analytics → Human Traffic → Settings and choose PostHog. Enter the numeric PostHog project ID (events are filtered by `team_id`) and the export database host/IP, port, database, reader username and password, schema, and table. The password is encrypted and is never returned to the browser. Changing the credential destination requires re-entering the password.
-
-For a private certificate authority, encode the CA's PEM file as base64 and enter it in the optional CA field. A valid public certificate needs no custom CA.
-
-Set the reporting time zone to match the website. Set an exact landing-page hostname if the PostHog project contains multiple websites. Configure conversion event names and, optionally, a revenue event plus its numeric top-level property. Revenue values must already be in the configured currency and in currency units, not cents; AutoSEO does not convert currencies.
-
-Test the connection, save, and let the initial job finish. Changing source selection, time zone or event mappings clears the old provider aggregates and starts a full import so incompatible measurements are not mixed.
-
-## Measurement limits
-
-- Sessions are reconstructed from exported events carrying `$session_id`; pageviews without a session ID and sessions without `$pageview` are excluded.
-- The first exported event sets session start; the first pageview supplies landing page, country and attribution. Export all session activity to avoid truncating these measurements.
-- Duration is the time between the first and last exported events. A session is engaged if it has at least ten seconds of recorded activity, multiple pageviews, or an autocapture interaction. Replay-only activity may not be represented.
-- Organic acquisition is inferred from entry UTM medium or a known search-engine referrer; it may differ from PostHog's native channel classification.
-- Visitors use the final exported `distinct_id` per session, rather than PostHog's full person-merge graph. Distinct visitors can overlap across traffic dimensions when totals are combined.
-- Conversion/revenue metrics without mappings are unavailable and displayed as zero with a notice. Invalid numeric revenue values are ignored.
-- UUID deduplication prevents export retries from multiplying events. Session activity across midnight is scanned on both sides of each import window and attributed to the session's start date.
-- Imports use seven-day windows with a 50,000-row aggregate limit per window and a database statement timeout. A failed query does not replace that window's stored aggregates.
+The free-form `/query` API and event export API are not used for scheduled synchronization. See [Endpoints vs Query API](https://posthog.com/docs/endpoints/endpoints-vs-query-api) for the supported reporting approach.

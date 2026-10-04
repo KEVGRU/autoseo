@@ -46,7 +46,7 @@ import {
 import { bingSiteMatchesDomain, testBingConnection } from "./bing";
 import { testMatomoConnection } from "./matomo";
 import { testPiwikConnection } from "./piwik";
-import { testPostHogConnection } from "./posthog";
+import { testPostHogConnection, ensurePostHogEndpoint } from "./posthog";
 import { posthogConfig } from "@/server/analytics/traffic/posthog";
 import { integrationTarget } from "./store";
 import { getSetting } from "@/server/settings";
@@ -386,7 +386,7 @@ export async function testTokenCredentials(
       return testBingConnection(instanceKey, config.siteUrl ?? "", { revealSites: false });
     }
     case PROVIDERS.posthog:
-      return testPostHogConnection({ ...posthogConfig(config), password: secret.password ?? "" });
+      return testPostHogConnection({ ...posthogConfig(config), apiKey: secret.apiKey ?? "" });
     case PROVIDERS.matomo:
       return testMatomoConnection({ url: config.url ?? "", siteId: config.siteId ?? "", tokenAuth: secret.tokenAuth ?? "" });
     case PROVIDERS.piwik:
@@ -412,7 +412,11 @@ export async function saveTokenIntegration(input: {
   const entry = getCatalogEntry(input.provider);
   if (!entry || !isInlineTokenProvider(entry)) throw new Error("This integration cannot be configured here.");
   const { config, secret, existing } = await parseTokenValues(input.projectId, entry, input.values);
-  if (entry.key === PROVIDERS.posthog) Object.assign(config, posthogConfig(config));
+  if (entry.key === PROVIDERS.posthog) {
+    Object.assign(config, posthogConfig(config));
+    // Saving without a connection test still prepares the stable reporting endpoint.
+    if (!input.test) await ensurePostHogEndpoint({ ...posthogConfig(config), apiKey: secret.apiKey ?? "" });
+  }
   let message: string | null = null;
   if (input.test && entry.testable) message = await testTokenCredentials(entry.key, config, secret, { projectId: input.projectId, projectDomain: input.projectDomain });
   // Even untested saves may not point the instance-wide Bing key at a foreign site.
