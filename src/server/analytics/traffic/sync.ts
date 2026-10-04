@@ -486,7 +486,7 @@ async function syncPostHog(projectId: string, target: string, creds: PostHogCred
     rows += normalized.rows.length;
     aiSessions += normalized.rows.reduce((sum, r) => sum + r.sessions, 0);
   }
-  return { rows, aiSessions, organic: { status: "ok" as const, note: "Inferred from entry UTM medium and search referrers in exported events; may differ from PostHog channel attribution." } };
+  return { rows, aiSessions, organic: { status: "ok" as const, note: "Uses PostHog’s native Organic Search session channel." } };
 }
 
 /* ───────────────────────────── Entry point ───────────────────────────── */
