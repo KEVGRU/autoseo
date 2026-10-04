@@ -209,7 +209,7 @@ export async function runHealthChecks(force = false): Promise<HealthCheck[]> {
           return { key: "smtp", label: "Email", status: "ok", summary: "Default mail server", detail: "Configured by the platform (AUTOSEO_SMTP_URL)", href: "/admin/email" };
         }
         return res.ok
-          ? { key: "smtp", label: "Email", status: "ok", summary: smtp.preset === "ses" ? `Amazon SES · ${smtp.sesRegion}` : smtp.host, detail: smtp.fromEmail, href: "/admin/email" }
+          ? { key: "smtp", label: "Email", status: "ok", summary: smtp.preset === "ses" ? `Amazon SES · ${smtp.sesRegion}` : smtp.preset === "resend" ? "Resend" : smtp.host, detail: smtp.fromEmail, href: "/admin/email" }
           : { key: "smtp", label: "Email", status: "error", summary: "Connection failed", detail: res.error, href: "/admin/email" };
       },
       force,
@@ -299,7 +299,7 @@ export async function getSetupChecklist() {
   const [{ n: projectCount } = { n: 0 }] = await db.select({ n: sql<number>`count(*)::int` }).from(projects);
   const agentOnline = await hasOnlineAgent("any").catch(() => false);
   return [
-    { key: "email", label: "Configure email delivery", description: "SMTP or Amazon SES for magic links and invitations.", done: (smtp.enabled && !!smtp.fromEmail) || (await usesDefaultMailServer()), href: "/admin/email" },
+    { key: "email", label: "Configure email delivery", description: "Resend, Amazon SES or custom SMTP for magic links and invitations.", done: (smtp.enabled && !!smtp.fromEmail) || (await usesDefaultMailServer()), href: "/admin/email" },
     { key: "domains", label: "Restrict sign-in to your domains", description: "Only invited people from allowed domains can sign in.", done: auth.allowedDomains.length > 0, href: "/admin/auth" },
     {
       key: "ai",

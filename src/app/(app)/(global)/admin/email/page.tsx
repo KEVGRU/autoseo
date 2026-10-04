@@ -22,7 +22,7 @@ export default async function AdminEmailPage() {
   return (
     <AdminPage
       title="Email"
-      description="Delivery for magic sign-in links and invitations. Works with Amazon SES or any SMTP server."
+      description="Delivery for magic sign-in links and invitations. Works with Resend, Amazon SES or any SMTP server."
     >
       {platformDefault && (
         <Alert className="mb-4">

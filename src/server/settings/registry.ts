@@ -66,7 +66,7 @@ const sso = z.object({
 
 const smtp = z.object({
   enabled: z.boolean().default(false),
-  preset: z.enum(["ses", "custom"]).default("ses"),
+  preset: z.enum(["ses", "resend", "custom"]).default("ses"),
   sesRegion: z.string().default("eu-central-1"),
   host: z.string().default(""),
   port: z.number().int().default(587),
@@ -274,7 +274,7 @@ export const settingsRegistry = {
   general: { schema: general, secrets: [] as const, label: "General & branding" },
   auth: { schema: auth, secrets: [] as const, label: "Authentication" },
   sso: { schema: sso, secrets: ["clientSecret"] as const, label: "Single sign-on (OIDC)" },
-  smtp: { schema: smtp, secrets: ["password"] as const, label: "Email (SMTP / Amazon SES)" },
+  smtp: { schema: smtp, secrets: ["password"] as const, label: "Email (SMTP / Amazon SES / Resend)" },
   ai: {
     schema: ai,
     secrets: [
