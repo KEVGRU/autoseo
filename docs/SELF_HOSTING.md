@@ -131,7 +131,7 @@ Everything past `DOMAIN` lives in the database and is configured at `/admin` aft
 | Area | What you'll want to set up first |
 |---|---|
 | **PostHog analytics** | Project → Integrations → PostHog. Import website sessions from a separate Postgres Events export database using read-only credentials and TLS. See [setup and measurement limits](POSTHOG.md). |
-| **Email** | Admin → Email — SMTP or Amazon SES (region preset), sender address, send a test email. Required for invites and magic links to actually arrive. |
+| **Email** | Admin → Email — Resend, Amazon SES (region preset) or custom SMTP, sender address, send a test email. Required for invites and magic links to actually arrive. |
 | **AI providers** | Admin → AI Providers — either point AutoSEO at your own local **Claude Code / Codex CLI** agents (Settings → Local Agents → Install agent, see the README's *Local agents* section) or configure API keys (Anthropic / OpenAI / OpenRouter / Perplexity / Gemini / xAI / Mistral / DeepSeek / Meta / Qwen / Moonshot / Maritaca / Upstage) as a fallback. At least one of the two is needed for any AI-visibility feature. Without DataForSEO, keyword, SERP, domain, backlink and local data are filled with labelled AI estimates, and engines without a provider can be simulated by an AI model with web search (Admin → Data Providers / AI Providers). |
 | **DataForSEO** | Admin → Data Providers — keyword research, SERPs, backlinks and AI-engine tracking all go through [DataForSEO](https://dataforseo.com); add your credentials here. |
 | **Google OAuth** | Admin → Data Providers — connect Search Console, GA4 and Sheets export by registering an OAuth client and pasting the client ID/secret here. |
@@ -365,6 +365,8 @@ terminates TLS on the public side even if it talks plain HTTP to the app interna
 **Setup code not shown / can't find it** — it's only printed once per boot, and only while no owner account
 exists yet. `docker compose logs app | grep -A2 "AutoSEO first-run setup"`. If you've already completed setup
 (or set `AUTOSEO_OWNER_EMAIL`), there won't be one — sign in normally instead.
+
+**Resend** — choose Resend in Admin → Email, enter your API key, and use a sender address on a domain verified in Resend. The preset uses `smtp.resend.com:587` with STARTTLS and username `resend`; the key is stored encrypted as the SMTP password. Save, verify the connection, then send a test email. See the [Resend SMTP guide](https://resend.com/docs/send-with-smtp). Switching providers requires re-entering the credential.
 
 **Emails not arriving** — check `docker compose logs app` for SMTP errors, and send a test email from Admin →
 Email (it reports the exact SMTP error). Common causes: wrong port/TLS mode (587 = STARTTLS, 465 = TLS),

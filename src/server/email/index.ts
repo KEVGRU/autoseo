@@ -1,6 +1,7 @@
 import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
 import { getSetting } from "@/server/settings";
+import { smtpConnection } from "@/lib/smtp-provider";
 import { env, isSharedCloud } from "@/server/env";
 
 export type MailAttachment = {
@@ -27,17 +28,16 @@ type Transport = { from: string; replyTo?: string; transporter: Transporter };
 
 async function buildTransport(): Promise<Transport | null> {
   const smtp = await getSetting("smtp");
-  const host = smtp.preset === "ses" ? `email-smtp.${smtp.sesRegion}.amazonaws.com` : smtp.host;
+  const connection = smtpConnection(smtp);
+  const { host, user, ...options } = connection;
   if (smtp.enabled && host && smtp.fromEmail) {
     return {
       from: smtp.fromName ? `"${smtp.fromName.replace(/"/g, "")}" <${smtp.fromEmail}>` : smtp.fromEmail,
       replyTo: smtp.replyTo || undefined,
       transporter: nodemailer.createTransport({
         host,
-        port: smtp.port,
-        secure: smtp.secure || smtp.port === 465,
-        auth: smtp.user ? { user: smtp.user, pass: smtp.password } : undefined,
-        requireTLS: !smtp.secure && smtp.port === 587,
+        ...options,
+        auth: user ? { user, pass: smtp.password } : undefined,
       }),
     };
   }
@@ -65,7 +65,7 @@ export async function usesDefaultMailServer(): Promise<boolean> {
 }
 
 /**
- * Sends an email via the configured SMTP server (Amazon SES SMTP supported out of the box).
+ * Sends an email via the configured SMTP server (Amazon SES and Resend supported out of the box).
  * Without SMTP configured the message is written to the server log so the instance still works.
  */
 export async function sendMail(input: MailInput): Promise<MailResult> {

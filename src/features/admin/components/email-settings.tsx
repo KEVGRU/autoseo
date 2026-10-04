@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { smtpConnection } from "@/lib/smtp-provider";
 import type { Settings } from "@/server/settings/registry";
 import { NumberInput, Rows, SaveBar, SecretInput, SettingRow, TestButton, ToggleRow, useSettingsForm } from "./settings-kit";
 import { sendTestEmailAction, verifySmtpAction } from "../actions/tests";
@@ -83,8 +84,8 @@ export function EmailSettings({
   const f = useSettingsForm("smtp", smtp);
   const v = f.values;
   const [to, setTo] = useState(adminEmail);
-  const host = v.preset === "ses" ? `email-smtp.${v.sesRegion}.amazonaws.com` : v.host;
-  const incomplete = v.enabled && (!host || !v.fromEmail);
+  const { host } = smtpConnection(v);
+  const incomplete = v.enabled && (!host || !v.fromEmail || (v.preset === "resend" && !f.secretEdits.password && !f.secrets.password));
 
   return (
     <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -112,6 +113,7 @@ export function EmailSettings({
               title="Amazon SES"
               text="SMTP interface of Amazon Simple Email Service"
             />
+            <PresetCard active={v.preset === "resend"} onClick={() => f.set("preset", "resend")} icon={Send} title="Resend" text="API key with encrypted SMTP delivery" />
             <PresetCard active={v.preset === "custom"} onClick={() => f.set("preset", "custom")} icon={Server} title="Custom SMTP" text="Any SMTP server (Postmark, Mailgun, Google…)" />
           </div>
           <Rows>
@@ -131,34 +133,44 @@ export function EmailSettings({
                 </Select>
                 <p className="mt-1.5 font-mono text-[11px] text-muted-foreground">{host}</p>
               </SettingRow>
+            ) : v.preset === "resend" ? (
+              <SettingRow label="Resend connection" description="Uses STARTTLS on port 587 with username resend.">
+                <p className="font-mono text-[13px]">{host}</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">Create an API key and verify your sending domain in Resend. Enter the API key below.</p>
+                <a href="https://resend.com/docs/send-with-smtp" target="_blank" rel="noreferrer" className="mt-1.5 inline-block text-xs underline">Resend setup guide</a>
+              </SettingRow>
             ) : (
               <SettingRow label="Host" htmlFor="smtp-host">
                 <Input id="smtp-host" value={v.host} onChange={(e) => f.set("host", e.target.value)} placeholder="smtp.example.com" className="font-mono text-[13px]" />
               </SettingRow>
             )}
-            <SettingRow label="Port & encryption" description="587 with STARTTLS (recommended) or 465 with implicit TLS.">
-              <div className="flex flex-wrap items-center gap-3">
-                <NumberInput value={v.port} onChange={(x) => f.set("port", x)} min={1} max={65535} className="w-28" />
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={v.secure || v.port === 465} onCheckedChange={(x) => f.set("secure", x)} disabled={v.port === 465} />
-                  Implicit TLS
-                </label>
-              </div>
-            </SettingRow>
-            <SettingRow
-              label="Username"
-              htmlFor="smtp-user"
-              description={v.preset === "ses" ? "SES SMTP credentials (created in the SES console) — not your IAM access key." : undefined}
-            >
-              <Input id="smtp-user" value={v.user} onChange={(e) => f.set("user", e.target.value)} autoComplete="off" className="font-mono text-[13px]" />
-            </SettingRow>
-            <SettingRow label="Password" htmlFor="smtp-password" description="Stored encrypted. Never shown again after saving.">
+            {v.preset !== "resend" && (
+              <>
+                <SettingRow label="Port & encryption" description="587 with STARTTLS (recommended) or 465 with implicit TLS.">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <NumberInput value={v.port} onChange={(x) => f.set("port", x)} min={1} max={65535} className="w-28" />
+                    <label className="flex items-center gap-2 text-sm">
+                      <Switch checked={v.secure || v.port === 465} onCheckedChange={(x) => f.set("secure", x)} disabled={v.port === 465} />
+                      Implicit TLS
+                    </label>
+                  </div>
+                </SettingRow>
+                <SettingRow
+                  label="Username"
+                  htmlFor="smtp-user"
+                  description={v.preset === "ses" ? "SES SMTP credentials (created in the SES console) — not your IAM access key." : undefined}
+                >
+                  <Input id="smtp-user" value={v.user} onChange={(e) => f.set("user", e.target.value)} autoComplete="off" className="font-mono text-[13px]" />
+                </SettingRow>
+              </>
+            )}
+            <SettingRow label={v.preset === "resend" ? "Resend API key" : "Password"} htmlFor="smtp-password" description="Stored encrypted. Never shown again after saving. Enter it again when switching providers.">
               <SecretInput
                 id="smtp-password"
                 isSet={f.secrets.password ?? false}
                 value={f.secretEdits.password}
                 onChange={(x) => f.setSecret("password", x)}
-                placeholder="SMTP password"
+                placeholder={v.preset === "resend" ? "re_…" : "SMTP password"}
               />
             </SettingRow>
           </Rows>
@@ -172,7 +184,7 @@ export function EmailSettings({
             <SettingRow
               label="From address"
               htmlFor="from-email"
-              description={v.preset === "ses" ? "Must belong to a verified SES identity (domain or address)." : "Must be allowed to send via this server."}
+              description={v.preset === "ses" ? "Must belong to a verified SES identity (domain or address)." : v.preset === "resend" ? "Must belong to a domain verified in Resend." : "Must be allowed to send via this server."}
             >
               <Input id="from-email" type="email" value={v.fromEmail} onChange={(e) => f.set("fromEmail", e.target.value)} placeholder="seo@company.com" />
             </SettingRow>
@@ -185,7 +197,7 @@ export function EmailSettings({
         {incomplete && (
           <Alert>
             <Info className="size-4" />
-            <AlertDescription>Host and from address are required before emails can be sent.</AlertDescription>
+            <AlertDescription>{v.preset === "resend" ? "A Resend API key and a from address on your verified domain are required before emails can be sent." : "Host and from address are required before emails can be sent."}</AlertDescription>
           </Alert>
         )}
 
