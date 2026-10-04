@@ -13,6 +13,7 @@ import { DangerZone } from "@/features/settings/project/danger";
 import { ProjectGroupSettings } from "@/features/settings/project/group";
 import { listGroupOptions } from "@/server/access/groups";
 import type { ProjectSettingsData } from "@/features/settings/project/shared";
+import { ProjectProviderSettings } from "@/features/settings/project/providers";
 
 export const metadata = { title: "Project settings" };
 
@@ -20,6 +21,7 @@ const TABS = [
   { key: "general", label: "General" },
   { key: "brand", label: "Brand" },
   { key: "tracking", label: "Tracking" },
+  { key: "providers", label: "Providers" },
   { key: "pitch", label: "Pitch" },
   { key: "danger", label: "Danger zone" },
 ] as const;
@@ -104,6 +106,14 @@ export default async function ProjectSettingsPage({ params, searchParams }: Page
       {tab === "brand" && <BrandSettings key={p.updatedAt.toISOString()} project={project} canManage={canManage} />}
       {tab === "tracking" && (
         <TrackingSettings key={p.updatedAt.toISOString()} project={project} canEdit={canTrack} engines={engines} isAdmin={ctx.isInstanceAdmin} />
+      )}
+      {tab === "providers" && (
+        <ProjectProviderSettings
+          projectId={projectId}
+          canManage={ctx.isInstanceAdmin || ctx.permissions.has("settings.manage")}
+          isAdmin={ctx.isInstanceAdmin}
+          adminEmail={ctx.user.email}
+        />
       )}
       {tab === "pitch" && (
         <PitchSettings project={project} canManage={canManage} defaultDays={onboarding.defaultPitchDays} allowPitch={onboarding.allowPitchProjects} />

@@ -8,11 +8,12 @@ import { dateRange, monthKey, pctChange, type AnalyticsPeriod } from "../period"
 import { buildTrafficFlow, type FlowMetric, type FlowResult } from "./flow";
 import { benchmarkHeadline, compareEngagement, engagementStats, type BenchmarkMetric, type EngagementStats } from "./benchmark";
 
-export const TRAFFIC_PROVIDERS: TrafficProvider[] = ["google_analytics", "matomo", "piwik_pro"];
+export const TRAFFIC_PROVIDERS: TrafficProvider[] = ["google_analytics", "matomo", "piwik_pro", "posthog"];
 export const TRAFFIC_PROVIDER_LABEL: Record<TrafficProvider, string> = {
   google_analytics: "Google Analytics",
   matomo: "Matomo",
   piwik_pro: "Piwik PRO",
+  posthog: "PostHog",
 };
 
 export type TrafficSource = {
@@ -27,6 +28,7 @@ export type TrafficSource = {
   /** Organic-search benchmark import: ok | unsupported | error | null (not synced since the benchmark shipped). */
   organicChannel: "ok" | "unsupported" | "error" | null;
   organicNote: string | null;
+  measurementNote?: string | null;
 };
 
 function hostOf(url: unknown): string {
@@ -51,16 +53,17 @@ export async function getTrafficSources(projectId: string): Promise<TrafficSourc
         ? String(cfg.propertyName ?? cfg.propertyId ?? "")
         : provider === "matomo"
           ? `${hostOf(cfg.url)} · site ${String(cfg.siteId ?? "")}`
-          : hostOf(cfg.accountUrl);
+          : provider === "posthog" ? `project ${String(cfg.projectId ?? "")} · ${String(cfg.host ?? "")} · ${String(cfg.hostname ?? "all hostnames")}` : hostOf(cfg.accountUrl);
     const pending = row.status === "pending" || (provider === "google_analytics" && !cfg.propertyId);
     out.push({
       provider,
+      measurementNote: provider === "posthog" ? `Uses PostHog’s native session duration, bounce and acquisition channel. Visitors are unique within each reporting group and may overlap across groups.${!cfg.conversionEvents ? " Conversion events are not mapped; conversion metrics are unavailable and shown as zero." : ""}${!cfg.revenueEvent ? " Revenue is not mapped; revenue is unavailable and shown as zero." : ""}` : null,
       label: TRAFFIC_PROVIDER_LABEL[provider],
       propertyLabel,
       status: pending ? "pending" : row.status === "error" ? "error" : "connected",
       lastSyncAt: row.lastSyncAt?.toISOString() ?? null,
       lastError: row.lastError,
-      currency: provider === "google_analytics" && typeof cfg.currency === "string" ? cfg.currency : "EUR",
+      currency: (provider === "google_analytics" || provider === "posthog") && typeof cfg.currency === "string" ? cfg.currency : "EUR",
       syncedThrough: typeof cfg.syncedThrough === "string" ? cfg.syncedThrough : null,
       organicChannel: cfg.organicChannel === "ok" || cfg.organicChannel === "unsupported" || cfg.organicChannel === "error" ? cfg.organicChannel : null,
       organicNote: typeof cfg.organicNote === "string" ? cfg.organicNote : null,

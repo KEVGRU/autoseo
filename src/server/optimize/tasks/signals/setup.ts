@@ -10,7 +10,7 @@ import { rows } from "./helpers";
 import type { TaskFinding } from "./types";
 
 const SEARCH_CONSOLE = ["google_search_console", "bing_webmaster"];
-const ANALYTICS = ["google_analytics", "matomo", "piwik_pro"];
+const ANALYTICS = ["google_analytics", "matomo", "piwik_pro", "posthog"];
 const BOT_SOURCES = ["cloudflare", "akamai", "server_logs"];
 
 /**

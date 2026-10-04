@@ -78,6 +78,30 @@ const cms = (key: string) => p(`/content?connect=${key}`);
 export const INTEGRATIONS: CatalogEntry[] = [
   /* ───────────── Analytics ───────────── */
   {
+    key: "posthog",
+    name: "PostHog",
+    category: "analytics",
+    description: "Connect PostHog to import website sessions, AI referrals and engagement. Optional event mappings add conversions and revenue.",
+    domain: "posthog.com",
+    color: "#f9bd2b",
+    connect: "token",
+    testable: true,
+    manageHref: p("/analytics/traffic?tab=settings"),
+    docsUrl: "https://posthog.com/docs/endpoints",
+    fields: [
+      { key: "host", label: "PostHog host", type: "url", required: true, destination: true, placeholder: "https://eu.posthog.com", help: "Your PostHog instance URL: https://eu.posthog.com, https://us.posthog.com, or your self-hosted HTTPS origin." },
+      { key: "projectId", label: "PostHog project ID", type: "text", required: true, destination: true, help: "Numeric project ID from PostHog project settings." },
+      { key: "apiKey", label: "Personal API key", type: "password", required: true, secret: true, help: "Stored encrypted. Endpoint read access is required. First-time setup also needs Endpoint and SQL variable write access to create the website report." },
+      { key: "hostname", label: "Website hostname (optional)", type: "text", placeholder: "www.example.com", help: "Exact landing-page hostname. Set this when your PostHog project also tracks an app or other websites." },
+      { key: "timeZone", label: "Reporting time zone", type: "text", placeholder: "UTC", help: "IANA time zone, e.g. Europe/Vienna. Defaults to UTC." },
+      { key: "currency", label: "Revenue currency", type: "text", placeholder: "EUR", help: "Revenue values must already use this currency; no conversion is performed. Defaults to EUR." },
+      { key: "conversionEvents", label: "Conversion events (optional)", type: "text", placeholder: "signup,purchase", help: "Comma-separated exact event names. Without mappings, conversions are unavailable and displayed as zero." },
+      { key: "revenueEvent", label: "Revenue event (optional)", type: "text", placeholder: "purchase" },
+      { key: "revenueProperty", label: "Revenue property (optional)", type: "text", placeholder: "amount", help: "Numeric top-level event property in currency units. Set together with the revenue event. Without mappings, revenue is unavailable and displayed as zero." },
+    ],
+  },
+
+  {
     key: "google_analytics",
     name: "Google Analytics",
     category: "analytics",
@@ -509,6 +533,7 @@ export const PROVIDERS = {
   bing: "bing_webmaster",
   matomo: "matomo",
   piwik: "piwik_pro",
+  posthog: "posthog",
   cloudflare: "cloudflare",
   akamai: "akamai",
   serverLogs: "server_logs",

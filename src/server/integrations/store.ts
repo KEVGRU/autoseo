@@ -1,4 +1,5 @@
 import "server-only";
+import { POSTHOG_CONFIG_KEYS } from "@/server/analytics/traffic/posthog";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { integrations } from "@/server/db/schema";
@@ -153,6 +154,8 @@ export function integrationTarget(provider: string, config: Record<string, unkno
       return s("propertyId");
     case PROVIDERS.matomo:
       return `${s("url")}|${s("siteId")}`;
+    case PROVIDERS.posthog:
+      return JSON.stringify(POSTHOG_CONFIG_KEYS.map(s));
     case PROVIDERS.piwik:
       return `${s("accountUrl")}|${s("websiteId")}`;
     default:
